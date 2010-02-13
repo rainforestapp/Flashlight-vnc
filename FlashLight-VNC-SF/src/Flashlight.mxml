@@ -70,9 +70,14 @@
 			
 			private var popupAskPassword:AskPasswordPopup = new AskPasswordPopup();
 			
+			
+			[Embed(source="/assets/fitToScreen.png")] [Bindable] private var fitToScreenIcon:Class;
+			[Embed(source="/assets/fitToWindow.png")] [Bindable] private var fitToWindowIcon:Class;
+			
 			[Bindable] private var settings:VNCSettings = new VNCSettings();
 			[Bindable] private var hideControls:Boolean;
 			[Bindable] private var password:String;
+			[Bindable] private var fullscreenMode:Boolean = false;
 			
 			private function init():void {
 				if (URLUtil.getProtocol(url) == 'file') {
@@ -257,6 +262,34 @@
 				event.target.removeEventListener(Event.ENTER_FRAME, onFrameEnter);
 				mouseOnViewer = false;
 			}
+			
+			private function switchFullscreen():void {
+				if (Application.application.stage.displayState == StageDisplayState.NORMAL)	{
+					Application.application.stage.displayState = StageDisplayState.FULL_SCREEN;
+				} else {
+					Application.application.stage.displayState = StageDisplayState.NORMAL;
+				}
+			}
+			
+			private function switchFullScreen():void {
+				if (fullscreenMode) {
+					fullscreenMode = false;
+					Application.application.stage.removeEventListener(FullScreenEvent.FULL_SCREEN,exitFullScreen);
+					Application.application.stage.displayState = StageDisplayState.NORMAL;
+				} else {
+					try {
+						Application.application.stage.displayState = StageDisplayState.FULL_SCREEN;
+						Application.application.stage.addEventListener(FullScreenEvent.FULL_SCREEN,exitFullScreen);
+						fullscreenMode = true;
+					} catch (e:SecurityError) {
+						Alert.show('Fullscreen mode not allowed on flash movie.');
+					}
+				}
+			}
+			
+			private function exitFullScreen(event:FullScreenEvent):void {
+				fullscreenMode = false;
+			}
 		]]>
 	</mx:Script>
 	
@@ -289,5 +322,6 @@
 		<components:ConnectButton vncClient="{vnc}" />
 		<mx:Button width="26" styleName="iconButton" toolTip="Settings" click="(new SettingsPopup()).show(settings,this);" icon="@Embed('/assets/settings.png')" />
 		<mx:Button width="26" height="24" styleName="iconButton" toolTip="More options" click="(new MorePopup()).show(vnc,this);" label="…" />
+		<mx:Button width="26" styleName="iconButton" toolTip="Switch Fullscreen" icon="{fullscreenMode ? fitToWindowIcon : fitToScreenIcon}"	click="switchFullScreen()"/>
 	</mx:HBox>
 </mx:Application>

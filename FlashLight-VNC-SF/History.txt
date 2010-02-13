@@ -1,3 +1,9 @@
+v2.0.3
+Improve password dialog
+Fix keyboard input bug
+Fix mouse cursor bug
+Add Fullscreen button
+
 v2.0.2
 
 Fix password parameter bug
