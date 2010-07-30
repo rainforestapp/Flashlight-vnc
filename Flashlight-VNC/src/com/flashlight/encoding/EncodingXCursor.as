@@ -20,6 +20,8 @@
 package com.flashlight.encoding
 {
 	import com.flashlight.pixelformats.RFBPixelFormat;
+	import com.flashlight.pixelformats.RFBPixelFormat1bpp;
+	import com.flashlight.pixelformats.RFBPixelFormat24bpp;
 	import com.flashlight.rfb.RFBReaderListener;
 	
 	import flash.display.BitmapData;
@@ -32,14 +34,17 @@ package com.flashlight.encoding
 	import mx.logging.ILogger;
 	import mx.logging.Log;
 	
-	public class EncodingCursor implements Encoding {
-		private var logger:ILogger = Log.getLogger("EncodingCursor");
+	public class EncodingXCursor implements Encoding {
+		private var logger:ILogger = Log.getLogger("EncodingXCursor");
+		
+		private var palettePixelFormat:RFBPixelFormat = new RFBPixelFormat24bpp();
+		private var cursorPixelFormat:RFBPixelFormat = new RFBPixelFormat1bpp();
 		
 		public function getReader(inputStream:IDataInput, listener:RFBReaderListener, rectangle:Rectangle, pixelFormat:RFBPixelFormat):Object {
 			var maskDataSize:int = Math.floor((rectangle.width + 7)/8)*rectangle.height;		
 			return {
-				name:'EncodingCursor',
-				bytesNeeded: pixelFormat.getPixelsDataSize(rectangle.width, rectangle.height) + maskDataSize,
+				name:'EncodingXCursor',
+				bytesNeeded: maskDataSize * 2 + 6,
 				read: function():Object {
 					var cursorShape:BitmapData;
 					var hotSpot:Point = new Point(rectangle.x,rectangle.y);
@@ -47,7 +52,14 @@ package com.flashlight.encoding
 					if (rectangle.width==0 || rectangle.height==0) { // cursor not visible
 						cursorShape = new BitmapData(1,1,true,0);
 					} else {
-						var pixels:ByteArray = pixelFormat.readPixels(rectangle.width, rectangle.height, inputStream);
+						// read background and foreground colors
+						var palette:Array = [];
+						palette.push(palettePixelFormat.readPixel(inputStream));
+						palette.push(palettePixelFormat.readPixel(inputStream));
+						
+						cursorPixelFormat.updatePalette(palette);
+						
+						var pixels:ByteArray = cursorPixelFormat.readPixels(rectangle.width, rectangle.height, inputStream);
 						cursorShape = new BitmapData(rectangle.width, rectangle.height, true);
 						
 						var maskData:ByteArray = new ByteArray();

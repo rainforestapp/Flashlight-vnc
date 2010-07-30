@@ -61,6 +61,10 @@ package com.flashlight.pixelformats {
 			throw new Error("Not implemented");
 		}
 		
+		public function readPixelsNoRounding(width:uint,height:uint,inputStream:IDataInput):ByteArray {
+			return readPixels(width,height,inputStream);
+		}
+		
 		public function readPixel(inputStream:IDataInput):uint {
 			throw new Error("Not implemented");
 		}

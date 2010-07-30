@@ -19,16 +19,17 @@
 
 package com.flashlight.utils
 {
-	import mx.controls.Text;
-	import mx.logging.targets.LineFormattedTarget;
 	import mx.core.mx_internal;
+	import mx.logging.targets.LineFormattedTarget;
+	
+	import spark.components.TextArea;
 	
 	use namespace mx_internal;
 
 	public class ConsoleTarget extends LineFormattedTarget {
-		private var output:Text;
+		private var output:TextArea;
 		
-		public function ConsoleTarget(output:Text) {
+		public function ConsoleTarget(output:TextArea) {
 			super();
 			this.output = output;
 			includeCategory = true;
@@ -38,8 +39,8 @@ package com.flashlight.utils
 		}
 		
 		override mx_internal function internalLog(message:String):void {
-			if (output.text.length > 5000) output.text = "";
-			output.text += message +"\n";
+			if (output.text.length > 10000) output.text = "";
+			output.appendText(message + "\n");
 		}
 		
 	}

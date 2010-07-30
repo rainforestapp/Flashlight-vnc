@@ -21,6 +21,7 @@ package com.flashlight.vnc
 {
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
+	import flash.display.DisplayObject;
 	import flash.geom.Point;
 	
 	import mx.logging.ILogger;
@@ -31,9 +32,11 @@ package com.flashlight.vnc
 		
 		private var hotSpot:Point;
 		
-		public function VNCCursor() {
+		public function VNCCursor(defaultCursorImage:DisplayObject) {
+			bitmapData = new BitmapData(defaultCursorImage.width, defaultCursorImage.height,true,0);
+			bitmapData.draw(defaultCursorImage);
 			smoothing = true;
-			visible = false;
+			visible = true;
 			hotSpot = new Point(0,0);
 		}
 		

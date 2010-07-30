@@ -27,9 +27,9 @@ package com.flashlight.pixelformats {
 	import mx.logging.ILogger;
 	import mx.logging.Log;
 	
-	public class RFBPixelFormat16bpp extends RFBPixelFormat {
+	public class RFBPixelFormat16bppLittleEndian extends RFBPixelFormat {
 		
-		private static var logger:ILogger = Log.getLogger("RFBPixelFormat16bpp");
+		private static var logger:ILogger = Log.getLogger("RFBPixelFormat16bppLowEndian");
 		private var palette1:Array = new Array();
 		private var palette2:Array = new Array();
 		private var palette1b:Array = new Array();
@@ -38,11 +38,11 @@ package com.flashlight.pixelformats {
 		
 		private var rectBitmapData:BitmapData = new BitmapData(2,1000,false);
 		
-		public function RFBPixelFormat16bpp() {
+		public function RFBPixelFormat16bppLittleEndian() {
 			super({
 				bitsPerPixel: 16,
 			    depth: 16,
-			    bigEndian: true,
+			    bigEndian: false,
 			    trueColour: true,
 			    maxRed: 31,
 			    maxGreen: 31,
@@ -106,7 +106,7 @@ package com.flashlight.pixelformats {
 				data.position = pos;
 				rectBitmapData.setPixels(line2,data);
 				
-				rectBitmapData.paletteMap(rectBitmapData,rect,new Point(0,0),palette3,rounding ? palette1 : palette1b,rounding ? palette2 : palette2b);
+				rectBitmapData.paletteMap(rectBitmapData,rect,new Point(0,0),palette3,rounding ? palette2 : palette2b, rounding ? palette1 : palette1b);
 				
 				pixels.writeBytes(rectBitmapData.getPixels(rect));
 				
@@ -119,7 +119,7 @@ package com.flashlight.pixelformats {
 		}
 		
 		override public function readPixel(inputStream:IDataInput):uint {
-			return palette1[inputStream.readUnsignedByte()] + palette2[inputStream.readUnsignedByte()];
+			return palette2[inputStream.readUnsignedByte()] + palette1[inputStream.readUnsignedByte()];
 		}
 	}
 }

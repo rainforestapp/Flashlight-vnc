@@ -37,7 +37,6 @@ package com.flashlight.encoding
 				name:'EncodingCursorPos',
 				bytesNeeded: 0,
 				read: function():Object {
-					
 					listener.onChangeCursorPos(new Point(rectangle.x,rectangle.y));
 					
 					return null;

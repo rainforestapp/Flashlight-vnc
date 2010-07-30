@@ -17,6 +17,6 @@
 -->
 
 <mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" width="18" height="18"
-	borderStyle="solid" borderThickness="1" cornerRadius="4" borderColor="#333333">
+	borderStyle="solid" cornerRadius="4" borderColor="#333333">
 	<mx:Label text="?" width="100%"  textAlign="center"/>
 </mx:Box>

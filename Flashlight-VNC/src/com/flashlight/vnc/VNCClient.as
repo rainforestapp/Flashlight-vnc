@@ -1,20 +1,20 @@
 /*
 
-	Copyright (C) 2009 Marco Fucci
+Copyright (C) 2009 Marco Fucci
 
-	This program is free software; you can redistribute it and/or modify it under the terms of the
-	GNU General Public License as published by the Free Software Foundation;
-	either version 2 of the License, or (at your option) any later version.
-	
-	This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-	without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-	See the GNU General Public License for more details.
-	
-	You should have received a copy of the GNU General Public License along with this program;
-	if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+This program is free software; you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
 
-	Contact : mfucci@gmail.com
-	
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program;
+if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+Contact : mfucci@gmail.com
+
 */
 
 package com.flashlight.vnc
@@ -22,7 +22,9 @@ package com.flashlight.vnc
 	import com.flashlight.crypt.DesCipher;
 	import com.flashlight.pixelformats.RFBPixelFormat;
 	import com.flashlight.pixelformats.RFBPixelFormat16bpp;
+	import com.flashlight.pixelformats.RFBPixelFormat16bppLittleEndian;
 	import com.flashlight.pixelformats.RFBPixelFormat32bpp;
+	import com.flashlight.pixelformats.RFBPixelFormat32bppLittleEndian;
 	import com.flashlight.pixelformats.RFBPixelFormat8bpp;
 	import com.flashlight.rfb.RFBReader;
 	import com.flashlight.rfb.RFBReaderError;
@@ -33,6 +35,7 @@ package com.flashlight.vnc
 	import com.flashright.RightMouseEvent;
 	
 	import flash.display.BitmapData;
+	import flash.display.Sprite;
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
 	import flash.events.FocusEvent;
@@ -42,6 +45,7 @@ package com.flashlight.vnc
 	import flash.events.ProgressEvent;
 	import flash.events.SecurityErrorEvent;
 	import flash.events.TextEvent;
+	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	import flash.net.Socket;
@@ -50,11 +54,12 @@ package com.flashlight.vnc
 	import flash.ui.Mouse;
 	import flash.utils.ByteArray;
 	
+	import mx.binding.utils.ChangeWatcher;
 	import mx.core.Application;
 	import mx.events.PropertyChangeEvent;
 	import mx.logging.ILogger;
 	import mx.logging.Log;
-
+	
 	[Event( name="vncError", type="com.flashlight.vnc.VNCErrorEvent" )]
 	[Event( name="vncRemoteCursor", type="com.flashlight.vnc.VNCRemoteCursorEvent" )]
 	[Event( name="vncPasswordRequiered", type="com.flashlight.vnc.VNCPasswordRequieredEvent" )]
@@ -66,12 +71,20 @@ package com.flashlight.vnc
 		private var rfbReader:RFBReader;
 		private var rfbWriter:RFBWriter;
 		
+		private var nativeColorBigEndian:Boolean;
+		
 		private var vncAuthChallenge:ByteArray;
 		
 		private var pixelFormats:Object = {
 			"8": new RFBPixelFormat8bpp(),
 			"16": new RFBPixelFormat16bpp(),
 			"24": new RFBPixelFormat32bpp()
+		};
+		
+		private var pixelFormatsLowEndian:Object = {
+			"8": new RFBPixelFormat8bpp(),
+			"16": new RFBPixelFormat16bppLittleEndian(),
+			"24": new RFBPixelFormat32bppLittleEndian()
 		};
 		
 		private var pixelFormatChangePending:Boolean = false;
@@ -92,7 +105,16 @@ package com.flashlight.vnc
 		[Bindable] public var encoding:int;
 		[Bindable] public var jpegCompression:int;
 		[Bindable] public var colorDepth:int;
-
+		[Bindable] public var updateRectangle:Rectangle;
+		[Bindable] public var framebufferHasOffset:Boolean;
+		
+		public function VNCClient() {
+			ChangeWatcher.watch(this,"colorDepth",onColorDepthChange);
+			ChangeWatcher.watch(this,"encoding",onEncodingChange);
+			ChangeWatcher.watch(this,"jpegCompression",onJpegCompressionChange);
+			ChangeWatcher.watch(this,"viewOnly",onViewOnlyChange);
+		}
+		
 		public function connect():void {
 			if (status !== VNCConst.STATUS_NOT_CONNECTED) disconnect();
 			
@@ -158,12 +180,12 @@ package com.flashlight.vnc
 			key.writeUTFBytes(password);
 			var cipher:DesCipher = new DesCipher(key);
 			
-		    cipher.encrypt(vncAuthChallenge, 0, vncAuthChallenge, 0);
-		    cipher.encrypt(vncAuthChallenge, 8, vncAuthChallenge, 8);
-		    
-		    rfbWriter.writeSecurityVNCAuthChallenge(vncAuthChallenge);
-		    
-		    vncAuthChallenge = null;
+			cipher.encrypt(vncAuthChallenge, 0, vncAuthChallenge, 0);
+			cipher.encrypt(vncAuthChallenge, 8, vncAuthChallenge, 8);
+			
+			rfbWriter.writeSecurityVNCAuthChallenge(vncAuthChallenge);
+			
+			vncAuthChallenge = null;
 		}
 		
 		public function onSecurityOk():void {
@@ -175,35 +197,89 @@ package com.flashlight.vnc
 			logger.debug(">> onServerInit()");
 			
 			this.serverName = serverName;
+			nativeColorBigEndian = serverPixelFormat.bigEndian; 
 			
 			writePixelFormat();
 			writeEncodings();
 			
-			onChangeDesktopSize(framebufferWidth, framebufferHeight);
+			if (!updateRectangle) updateRectangle = new Rectangle(0,0,framebufferWidth,framebufferHeight);
+			
+			screen = new VNCScreen(framebufferHasOffset ? updateRectangle : new Rectangle(0,0,updateRectangle.width,updateRectangle.height));
+			
+			if (!viewOnly) addScreenEventListeners();
+			
+			rfbWriter.writeFramebufferUpdateRequest(false,updateRectangle);
 			
 			status = VNCConst.STATUS_CONNECTED;
-			 
+			
 			logger.debug("<< onServerInit()");
 		}
 		
-		private function onPropertyChange(event:PropertyChangeEvent):void {
+		private function addScreenEventListeners():void {
+			screen.addEventListener(MouseEvent.MOUSE_MOVE, onLocalMouseMove,false,0,true);
+			screen.addEventListener(MouseEvent.MOUSE_DOWN, onLocalMouseLeftDown,false,0,true);
+			screen.addEventListener(MouseEvent.MOUSE_UP, onLocalMouseLeftUp,false,0,true);
+			screen.addEventListener(MouseEvent.MOUSE_WHEEL, onLocalMouseWheel,false,0,true);
+			screen.addEventListener(MouseEvent.ROLL_OVER, onLocalMouseRollOver,false,0,true);
+			screen.addEventListener(MouseEvent.ROLL_OUT, onLocalMouseRollOut,false,0,true);
+			screen.addEventListener(RightMouseEvent.RIGHT_MOUSE_DOWN,onLocalMouseRightDown,false,0,true);
+			screen.addEventListener(RightMouseEvent.RIGHT_MOUSE_UP,onLocalMouseRightUp,false,0,true);
+			
+			screen.textInput.addEventListener(KeyboardEvent.KEY_UP, onLocalKeyboardEvent,false,0,true);
+			screen.textInput.addEventListener(KeyboardEvent.KEY_DOWN, onLocalKeyboardEvent,false,0,true);
+			screen.textInput.addEventListener(TextEvent.TEXT_INPUT, onTextInput,false,0,true);
+			screen.textInput.addEventListener(FocusEvent.KEY_FOCUS_CHANGE, onFocusLost,false,0,true);
+		}
+		
+		private function removeScreenEventListeners():void {
+			if (!screen) return;
+			screen.removeEventListener(MouseEvent.MOUSE_MOVE, onLocalMouseMove,false);
+			screen.removeEventListener(MouseEvent.MOUSE_DOWN, onLocalMouseLeftDown,false);
+			screen.removeEventListener(MouseEvent.MOUSE_UP, onLocalMouseLeftUp,false);
+			screen.removeEventListener(MouseEvent.MOUSE_WHEEL, onLocalMouseWheel,false);
+			screen.removeEventListener(MouseEvent.ROLL_OVER, onLocalMouseRollOver,false);
+			screen.removeEventListener(MouseEvent.ROLL_OUT, onLocalMouseRollOut,false);
+			screen.removeEventListener(RightMouseEvent.RIGHT_MOUSE_DOWN,onLocalMouseRightDown,false);
+			screen.removeEventListener(RightMouseEvent.RIGHT_MOUSE_UP,onLocalMouseRightUp,false);
+			
+			screen.textInput.removeEventListener(KeyboardEvent.KEY_UP, onLocalKeyboardEvent,false);
+			screen.textInput.removeEventListener(KeyboardEvent.KEY_DOWN, onLocalKeyboardEvent,false);
+			screen.textInput.removeEventListener(TextEvent.TEXT_INPUT, onTextInput,false);
+			screen.textInput.removeEventListener(FocusEvent.KEY_FOCUS_CHANGE, onFocusLost,false);
+		}
+		
+		private function onColorDepthChange(event:PropertyChangeEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
-			switch (event.property) {
-				case "colorDepth":
-					pixelFormatChangePending = true;
-					break;
-				case "encoding":
-					writeEncodings();
-					break;
-				case "jpegCompression":
-					if (encoding == VNCConst.ENCODING_TIGHT) writeEncodings();
-					break;
+			pixelFormatChangePending = true;
+		}
+		
+		private function onEncodingChange(event:PropertyChangeEvent):void {
+			if (status != VNCConst.STATUS_CONNECTED) return;
+			
+			writeEncodings();
+		}
+		
+		private function onJpegCompressionChange(event:PropertyChangeEvent):void {
+			if (status != VNCConst.STATUS_CONNECTED) return;
+			
+			if (encoding == VNCConst.ENCODING_TIGHT) writeEncodings();
+		}
+		
+		private function onViewOnlyChange(event:PropertyChangeEvent):void {
+			if (status != VNCConst.STATUS_CONNECTED) return;
+			
+			if (event.oldValue == event.newValue) return;
+			
+			if (event.oldValue) {
+				addScreenEventListeners();
+			} else {
+				removeScreenEventListeners();
 			}
 		}
 		
 		private function writePixelFormat():void {
-			var pixelFormat:RFBPixelFormat = pixelFormats[colorDepth];
+			var pixelFormat:RFBPixelFormat = nativeColorBigEndian ? pixelFormats[colorDepth] : pixelFormatsLowEndian[colorDepth];
 			
 			rfbWriter.writeSetPixelFormat(pixelFormat);
 			rfbReader.setPixelFormat(pixelFormat);
@@ -216,6 +292,7 @@ package com.flashlight.vnc
 				VNCConst.ENCODING_RAW,
 				VNCConst.ENCODING_COPYRECT,
 				VNCConst.ENCODING_CURSOR,
+				VNCConst.ENCODING_XCURSOR,
 				VNCConst.ENCODING_DESKTOPSIZE,
 				VNCConst.ENCODING_CURSOR_POS
 			];
@@ -315,10 +392,10 @@ package com.flashlight.vnc
 			
 			if (pixelFormatChangePending) {
 				writePixelFormat();
-				rfbWriter.writeFramebufferUpdateRequest(false,screen.getRectangle());
+				rfbWriter.writeFramebufferUpdateRequest(false,updateRectangle);
 				pixelFormatChangePending = false;
 			} else {
-				rfbWriter.writeFramebufferUpdateRequest(true,screen.getRectangle());	
+				rfbWriter.writeFramebufferUpdateRequest(true,updateRectangle);	
 			}
 		}
 		
@@ -333,11 +410,15 @@ package com.flashlight.vnc
 		public function onUpdateRectangle(rectangle:Rectangle, pixels:ByteArray):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
+			//if (framebufferHasOffset) rectangle.offset(-updateRectangle.x,-updateRectangle.y);
+			
 			screen.updateRectangle(rectangle,pixels);
 		}
 		
 		public function onUpdateRectangleBitmapData(point:Point, bitmapData:BitmapData):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
+			
+			//if (framebufferHasOffset) point.offset(-updateRectangle.x,-updateRectangle.y);
 			
 			screen.updateRectangleBitmapData(point,bitmapData);
 		}
@@ -345,11 +426,20 @@ package com.flashlight.vnc
 		public function onUpdateFillRectangle(rectangle:Rectangle, color:uint):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
+			//if (framebufferHasOffset) rectangle.offset(-updateRectangle.x,-updateRectangle.y);
+			
 			screen.fillRectangle(rectangle,color);
 		}
 		
 		public function onCopyRectangle(rectangle:Rectangle, source:Point):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
+			
+			//if (framebufferHasOffset) {
+			//	rectangle.offset(-updateRectangle.x,-updateRectangle.y);
+			//	source.offset(-updateRectangle.x,-updateRectangle.y);
+			//}
+			
+			//if (framebufferHasOffset) 
 			
 			screen.copyRectangle(rectangle,source);
 		}
@@ -366,30 +456,8 @@ package com.flashlight.vnc
 		}
 		
 		public function onChangeDesktopSize(width:int,height:int):void {
-			screen = new VNCScreen(width, height);
-			
-			if (!viewOnly) {
-				screen.addEventListener(MouseEvent.MOUSE_MOVE, onLocalMouseMove,false,0,true);
-				screen.addEventListener(MouseEvent.MOUSE_DOWN, onLocalMouseLeftDown,false,0,true);
-				screen.addEventListener(MouseEvent.MOUSE_UP, onLocalMouseLeftUp,false,0,true);
-				screen.addEventListener(MouseEvent.MOUSE_WHEEL, onLocalMouseWheel,false,0,true);
-				screen.addEventListener(MouseEvent.ROLL_OVER, onLocalMouseRollOver,false,0,true);
-				screen.addEventListener(MouseEvent.ROLL_OUT, onLocalMouseRollOut,false,0,true);
-				screen.addEventListener(RightMouseEvent.RIGHT_MOUSE_DOWN,onLocalMouseRightDown,false,0,true);
-				screen.addEventListener(RightMouseEvent.RIGHT_MOUSE_UP,onLocalMouseRightUp,false,0,true);
-				
-				screen.textInput.addEventListener(KeyboardEvent.KEY_UP, onLocalKeyboardEvent,false,0,true);
-				screen.textInput.addEventListener(KeyboardEvent.KEY_DOWN, onLocalKeyboardEvent,false,0,true);
-				screen.textInput.addEventListener(TextEvent.TEXT_INPUT, onTextInput,false,0,true);
-				screen.textInput.addEventListener(FocusEvent.KEY_FOCUS_CHANGE, onFocusLost,false,0,true);
-			}
-			
-			addEventListener(PropertyChangeEvent.PROPERTY_CHANGE, onPropertyChange);
-
-			rfbWriter.writeFramebufferUpdateRequest(false,screen.getRectangle());
+			screen.resize(width,height);
 		}
-		
-		
 		
 		private var captureKeyEvents:Boolean = false;
 		private var crtKeyDown:Boolean = false;
@@ -412,7 +480,7 @@ package com.flashlight.vnc
 			rfbWriter.writeKeyEvent(false,65507,false); //CTRL
 			rfbWriter.writeKeyEvent(false,65513,false); //ALT
 			rfbWriter.writeKeyEvent(false,65535,true); //DEL
-	    }
+		}
 		
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
@@ -421,7 +489,7 @@ package com.flashlight.vnc
 				event.stopImmediatePropagation();
 				
 				var keysym:uint;
-			
+				
 				switch ( event.keyCode ) {
 					case Keyboard.BACKSPACE : keysym = 0xFF08; break;
 					case Keyboard.TAB       : keysym = 0xFF09; break;
@@ -454,18 +522,7 @@ package com.flashlight.vnc
 					default: return;
 				}
 				
-				if (event.keyCode == Keyboard.CONTROL) {
-					crtKeyDown = (event.type == flash.events.KeyboardEvent.KEY_DOWN);
-				}
-			
-				if (event.type == flash.events.KeyboardEvent.KEY_UP && crtKeyDown)  {
-					rfbWriter.writeKeyEvent(true,keysym,false);
-					rfbWriter.writeKeyEvent(false,keysym,false);
-					rfbWriter.writeKeyEvent(false,0xFFE3,true);
-					crtKeyDown = false;
-				} else{
-					rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN ? true: false,keysym);
-				}
+				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN ? true: false,keysym);
 			}
 		}
 		
@@ -529,15 +586,14 @@ package com.flashlight.vnc
 				if (socket.connected) socket.close();
 				socket = null;
 			}
+			removeScreenEventListeners();
 			screen = null;
 			rfbReader = null;		    
-		    vncAuthChallenge = null;
-		    serverName = undefined;
-		    pixelFormatChangePending = false;
+			vncAuthChallenge = null;
+			serverName = undefined;
+			pixelFormatChangePending = false;
 			Mouse.show();
 			captureKeyEvents = false;
-		    
-			removeEventListener(PropertyChangeEvent.PROPERTY_CHANGE, onPropertyChange);
 			
 			status = VNCConst.STATUS_NOT_CONNECTED;
 			
@@ -550,7 +606,7 @@ package com.flashlight.vnc
 		
 		private function onSocketSecurityError(event:SecurityErrorEvent):void {
 			onError("An security error occured ("+event.text+").\n" + 
-					"Check your policy-policy server configuration or disable security for this domain.",null);
+				"Check your policy-policy server configuration or disable security for this domain.",null);
 		}
 		
 	}

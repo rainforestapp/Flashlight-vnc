@@ -127,45 +127,65 @@
 		<item label="8bits" value="8" />
 	</mx:XMLList>
 
-	<mx:VBox width="100%" borderStyle="solid" borderColor="#AAAAAA" paddingBottom="4" paddingLeft="4" paddingRight="4" paddingTop="4" horizontalAlign="center">
-		<mx:Label text="Connection settings" width="100%" paddingLeft="5" fontWeight="bold"/>
-		<mx:HBox width="100%" horizontalGap="5">
-			<mx:HBox verticalAlign="middle">
-				<mx:Text text="Host" width="30"/>
-				<mx:TextInput id="hostInput" width="80" text="{settings.host}" />
+	<mx:HBox width="100%" height="100%">
+		<mx:VBox width="100%" height="100%" borderStyle="solid" borderColor="#AAAAAA" paddingBottom="4" paddingLeft="4" paddingRight="4" paddingTop="4" horizontalAlign="center">
+			<mx:Label text="Connection settings" width="100%" paddingLeft="5" fontWeight="bold"/>
+			<mx:HBox width="100%" horizontalGap="5">
+				<mx:HBox verticalAlign="middle">
+					<mx:Text text="Host" width="30"/>
+					<mx:TextInput id="hostInput" width="80" text="{settings.host}" />
+				</mx:HBox>
+				<mx:HBox verticalAlign="middle">
+					<mx:Text text="Port" width="30" />
+					<mx:TextInput id="portInput" width="40" text="{settings.port}" />
+				</mx:HBox>
 			</mx:HBox>
-			<mx:HBox verticalAlign="middle">
-				<mx:Text text="Port" width="30" />
-				<mx:TextInput id="portInput" width="40" text="{settings.port}" />
+			<mx:HBox width="100%" verticalAlign="middle">
+				<mx:CheckBox id="securityEnabled" selected="{settings.useSecurity}" toggle="true" />
+				<mx:Text text="Security port" width="100%" enabled="{securityEnabled.selected}"/>
+				<mx:TextInput id="securityPortInput" width="40" text="{settings.securityPort}" enabled="{securityEnabled.selected}" />
+				<components:HelpTip toolTip="The flash player will ask for a XML security policy on this port before accessing the VNC port. If disabled, Flash will ask for the security policy on the VNC port. See Flashlight help pages for more info."/>
 			</mx:HBox>
-		</mx:HBox>
-		<mx:HBox width="100%" verticalAlign="middle">
-			<mx:CheckBox id="securityEnabled" selected="{settings.useSecurity}" toggle="true" />
-			<mx:Text text="Security port" width="100%" enabled="{securityEnabled.selected}"/>
-			<mx:TextInput id="securityPortInput" width="40" text="{settings.securityPort}" enabled="{securityEnabled.selected}" />
-			<components:HelpTip toolTip="The flash player will ask for a XML security policy on this port before accessing the VNC port. If disabled, Flash will ask for the security policy on the VNC port. See Flashlight help pages for more info."/>
-		</mx:HBox>
-		<mx:Button label="Test security policy" click="testSecurityPort();" enabled="{securityEnabled.selected}" />
-		<mx:Button label="Test VNC connection" click="testVNCConnection();" />
-	</mx:VBox>
-	<mx:VBox width="100%" borderStyle="solid" borderColor="#AAAAAA" paddingBottom="4" paddingLeft="4" paddingRight="4" paddingTop="4">
-		<mx:Label text="VNC settings" width="100%" paddingLeft="5" fontWeight="bold"/>
-		<mx:HBox width="100%">
-			<mx:Text text="Preferred encoding" width="100%" />
-			<utils:BetterPopUpMenuButton id="encodingList" labelField="@label" dataProvider="{encodings}" />
-		</mx:HBox>
-		<mx:HBox width="100%" height="{int(XML(encodingList.selectedItem).@value)==7 ? undefined : 0}">
-			<mx:Text text="JPEG compression" width="100%" />
-			<utils:BetterPopUpMenuButton id="compressionList" labelField="@label" dataProvider="{compressions}" />
-		</mx:HBox>
-		<mx:HBox width="100%">
-			<mx:Text text="Color Depth" width="100%" />
-			<utils:BetterPopUpMenuButton id="depthList" labelField="@label" dataProvider="{depths}" />
-		</mx:HBox>
-		<mx:CheckBox id="viewOnlyCheck" label="View only" selected="{settings.viewOnly}" toggle="true" />
-		<mx:CheckBox id="shareCheck" label="Share remote screen" selected="{settings.shared}" toggle="true" />
-		<mx:CheckBox id="scaleCheck" label="Scale image" selected="{settings.scale}" toggle="true" />
-	</mx:VBox>
+			<mx:Button label="Test security policy" click="testSecurityPort();" enabled="{securityEnabled.selected}" />
+			<mx:Button label="Test VNC connection" click="testVNCConnection();" />
+		</mx:VBox>
+		<mx:VBox width="100%" height="100%" borderStyle="solid" borderColor="#AAAAAA" paddingBottom="4" paddingLeft="4" paddingRight="4" paddingTop="4">
+			<mx:Label text="Image compression settings" width="100%" paddingLeft="5" fontWeight="bold"/>
+			<mx:Grid>
+				<mx:GridRow>
+					<mx:GridItem>
+						<mx:Text text="Preferred encoding" />
+					</mx:GridItem>
+					<mx:GridItem>
+						<utils:BetterPopUpMenuButton id="encodingList" labelField="@label" dataProvider="{encodings}" />
+					</mx:GridItem>
+				</mx:GridRow>
+				
+				<mx:GridRow height="{int(XML(encodingList.selectedItem).@value)==7 ? undefined : 0}">
+					<mx:GridItem>
+						<mx:Text text="JPEG compression" />
+					</mx:GridItem>
+					<mx:GridItem>
+						<utils:BetterPopUpMenuButton id="compressionList" labelField="@label" dataProvider="{compressions}" />
+					</mx:GridItem>
+				</mx:GridRow>
+				
+				<mx:GridRow>
+					<mx:GridItem>
+						<mx:Text text="Color Depth" />
+					</mx:GridItem>
+					<mx:GridItem>
+						<utils:BetterPopUpMenuButton id="depthList" labelField="@label" dataProvider="{depths}" />
+					</mx:GridItem>
+				</mx:GridRow>
+			</mx:Grid>
+			
+			<mx:CheckBox id="viewOnlyCheck" label="View only" selected="{settings.viewOnly}" toggle="true" />
+			<mx:CheckBox id="shareCheck" label="Share remote screen" selected="{settings.shared}" toggle="true" />
+			<mx:CheckBox id="scaleCheck" label="Scale image" selected="{settings.scale}" toggle="true" />
+		</mx:VBox>
+	</mx:HBox>
+	
 	<mx:HBox width="100%" horizontalAlign="right">
 		<mx:Button label="Cancel" click="PopUpManager.removePopUp(this);" />
 		<mx:Button label="Save" click="save();PopUpManager.removePopUp(this);" />

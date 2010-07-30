@@ -32,9 +32,9 @@ package com.flashlight.vnc
 		[Bindable] public var encoding:int = VNCConst.ENCODING_TIGHT;
 		[Bindable] public var colorDepth:int = 24;
 		[Bindable] public var jpegCompression:int = 6;
-		[Bindable] public var viewOnly:Boolean = false;
+		[Bindable] public var viewOnly:Boolean = true;
 		[Bindable] public var shared:Boolean = true;
-		[Bindable] public var scale:Boolean = true;
+		[Bindable] public var scale:Boolean = false;
 		
 		private var so:SharedObject;
 		

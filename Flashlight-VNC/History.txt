@@ -1,3 +1,18 @@
+v2.1.0
+Upgrade to Flex 4.1
+Add better compatibility with Tight-VNC
+Fix bug around control key
+Add default cursor when server is not sending a cursor
+Add XCursor encoding (not tested)
+Add updateRegion flashvar which allows to specify a region to capture. Format [x]x[y]x[width]x[height][xo] (xo is for server which sends screen with an offset)
+
+v2.0.4
+Fix minor bug on Format16bpp
+Add flashvar jpegCompression=off to disable jpeg compression for TightCodec
+Add Flash 10 required warning
+Mask cursor if cursor image is 0x0 instead of crashing
+Fix Tight gradient encoding with 16-bit color depth
+
 v2.0.3
 Improve password dialog
 Fix keyboard input bug
@@ -5,7 +20,6 @@ Fix mouse cursor bug
 Add Fullscreen button
 
 v2.0.2
-
 Fix password parameter bug
 Fix autoConnect parameter bug
 Fix typo on "Password reqiered"

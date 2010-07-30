@@ -16,53 +16,44 @@
 	Contact : mfucci@gmail.com
 -->
 
-<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml"
-	creationComplete="init()" xmlns:components="com.flashlight.components.*" xmlns:vnc="com.flashlight.vnc.*">
-
-	<mx:Style>
-		Application {
-			padding-bottom:0;
-			padding-left:0;
-			padding-right:0;
-			padding-top:0;
-			vertical-gap:0;
-		}
-		
-		.controls {
-			padding-bottom:5;
-			padding-left:5;
-			padding-right:5;
-			padding-top:5;
-		}
-		
-		.iconButton {
-			padding-bottom:0;
-			padding-left:0;
-			padding-right:0;
-			padding-top:0;
-		}
-		
-	</mx:Style>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:cmp="com.flashlight.components.*"
+			   xmlns:vnc="com.flashlight.vnc.*"
+			   creationComplete="init()" 
+	           backgroundColor="#000000">
 	
-	<mx:Script>
+	<s:layout>
+		<s:VerticalLayout gap="0" />
+	</s:layout>
+	
+	<fx:Script>
 		<![CDATA[
-			import mx.utils.URLUtil;
+			import com.flashlight.components.AskPasswordPopup;
 			import com.flashlight.components.MorePopup;
-			import mx.formatters.SwitchSymbolFormatter;
+			import com.flashlight.components.SettingsPopup;
+			import com.flashlight.utils.ConsoleTarget;
 			import com.flashlight.vnc.VNCConst;
 			import com.flashlight.vnc.VNCSettings;
-			import com.flashlight.components.SettingsPopup;
 			import com.flashright.JsRightClick;
-			import com.flashlight.components.AskPasswordPopup;
-			import mx.managers.PopUpManager;
-			import mx.controls.Alert;
-			import mx.core.UIComponent;
+			
 			import mx.containers.Box;
+			import mx.controls.Alert;
+			import mx.controls.Text;
 			import mx.core.Container;
-			import mx.logging.Log;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.formatters.SwitchSymbolFormatter;
 			import mx.logging.ILogger;
+			import mx.logging.Log;
 			import mx.logging.LogEventLevel;
-			import com.flashlight.utils.ConsoleTarget;
+			import mx.managers.PopUpManager;
+			import mx.utils.URLUtil;
+			
+			import spark.components.TextArea;
+			import spark.core.IViewport;
+			import spark.layouts.VerticalLayout;
 			
 			private static var logger:ILogger = Log.getLogger("Flashlight");
 			
@@ -79,9 +70,17 @@
 			[Bindable] private var password:String;
 			[Bindable] private var fullscreenMode:Boolean = false;
 			
-			private function init():void {
-				if (URLUtil.getProtocol(url) == 'file') {
-					Alert.show("WARNING:\nDue to a flash bug, Flashlight-VNC won't run well if served by the 'file' protocol in a browser, build in release mode.\nRun it from an HTTP server instead.\nRight-click disabled, tightVNC broken");
+			[Bindable] private var updateRectangle:Rectangle;
+			[Bindable] private var framebufferHasOffset:Boolean = false;
+			
+			private function init():void {				
+				var osArray:Array = Capabilities.version.split(' ');
+				var versionArray:Array = osArray[1].split(',');
+				var majorVersion:Number = parseInt(versionArray[0]);
+				
+				if (majorVersion < 10) {
+					Alert.show("ERROR:\nFlashlight-VNC requires Flash 10 or later.\nPlease upgrade.");
+					return;
 				}
 				
 				var debug:Boolean = parameters.debug == "true";
@@ -100,6 +99,14 @@
 					settings.securityPort = int(parameters.securityPort);
 					settings.useSecurity = true;
 				}
+				if (parameters.updateRegion) {
+					var updateRegionParam:String = parameters.updateRegion;
+					var parts:Array = updateRegionParam.split("x");
+					if (parts.length >= 4) {
+						updateRectangle = new Rectangle(parts[0],parts[1],parts[2],parts[3]);
+					}
+					if (parts.length >=5 && parts[4] == 'o') framebufferHasOffset = true;
+				}
 				if (parameters.encoding) {
 					switch (String(parameters.encoding).toLowerCase()) {
 						case "tight":
@@ -117,23 +124,20 @@
 					}
 				}
 				if (parameters.colorDepth) settings.colorDepth = int(parameters.colorDepth);
-				if (parameters.jpegCompression) settings.jpegCompression = parameters.jpegCompression;
+				if (parameters.jpegCompression) settings.jpegCompression = parameters.jpegCompression == "off" ? -1 : parameters.jpegCompression;
 				
 				if (debug) {
-					var consoleBox:Box = new Box();
-					consoleBox.percentWidth = 100;
-					consoleBox.height = 200;
-					consoleBox.verticalScrollPolicy = "on";
-					
-					var console:Text = new Text();
+					var console:TextArea = new TextArea();
+					console.editable = false;
 					console.percentWidth = 100;
 					
-					consoleBox.addChild(console);
-					this.addChild(consoleBox);
+					this.addElement(console);
 					
 					var consoleTarget:ConsoleTarget = new ConsoleTarget(console)
-					consoleTarget.level = LogEventLevel.DEBUG;
+					consoleTarget.level = LogEventLevel.INFO;
 				}
+				
+				logger.debug(">> init()");
 				
 				try {
 					new JsRightClick();
@@ -141,11 +145,9 @@
 					logger.error("Error whith right-click emulation: "+e.toString());
 				}
 				
-				logger.debug(">> init()");
-				
-				addEventListener(Event.ENTER_FRAME, onFrameEnter);
-				
 				if (autoConnect) vnc.connect();
+				
+				logger.debug("<< init()");
 			}
 			
 			private function onFrameEnter(event:Event):void {
@@ -154,12 +156,12 @@
 				var scrollMoved:Boolean = false;
 				
 				// prevent an error when parent is not yet created
-				if (!(element.parent is Box)) return;
+				if (!element.parent) return;
 				
-				var container:Box = Box(element.parent);
+				var container:IViewport = viewer.parent as IViewport;
 				
-				if (container.verticalScrollBar != null) {
-					var viewHeight:Number = element.height - container.maxVerticalScrollPosition;
+				if (viewerScroller.verticalScrollBar != null) {
+					var viewHeight:Number = container.height;
 	        		var marginYTop:Number = viewHeight*container.verticalScrollPosition/(4*element.height) + viewHeight/8;
 	        		var verticalScrollPositionSym:Number = element.height-viewHeight-container.verticalScrollPosition;
 	        		var marginYBottom:Number = viewHeight*verticalScrollPositionSym/(4*element.height) + viewHeight/8;
@@ -176,14 +178,14 @@
 	        		if (mouseYSym<verticalScrollPositionSym+marginYBottom && verticalScrollPositionSym > 0) {
         				newValue = (mouseYSym-viewHeight/8)/(1+viewHeight/(4*element.height))-2;
         				newValue = element.height-viewHeight-newValue;
-        				newValue = Math.min(newValue,container.maxVerticalScrollPosition);
+        				newValue = Math.min(newValue,container.contentHeight-container.height);
         				container.verticalScrollPosition = newValue;
         				scrollMoved = true;
         			}
 				}
 				
-				if (container.horizontalScrollBar!=null) {
-	        		var viewWidth:Number = element.width - container.maxHorizontalScrollPosition;
+				if (viewerScroller.horizontalScrollBar!=null) {
+	        		var viewWidth:Number = container.width;
 	        		var marginXLeft:Number = viewWidth*container.horizontalScrollPosition/(4*element.width) + viewWidth/8;
 	        		var horizontalScrollPositionSym:Number = element.width-viewWidth-container.horizontalScrollPosition;
 	        		var marginXRight:Number = viewWidth*horizontalScrollPositionSym/(4*element.width) + viewWidth/8;
@@ -200,13 +202,13 @@
 	        		if (mouseXSym<horizontalScrollPositionSym+marginXRight && horizontalScrollPositionSym > 0) {
         				newValue = (mouseXSym-viewWidth/8)/(1+viewWidth/(4*element.width))-2;
         				newValue = element.width-viewWidth-newValue;
-        				newValue = Math.min(newValue,container.maxHorizontalScrollPosition);
+        				newValue = Math.min(newValue,container.contentWidth-container.width);
         				container.horizontalScrollPosition = newValue;
         				scrollMoved = true;
         			}
 	        	}
 	        	
-	        	if (scrollMoved) {
+	        	if (scrollMoved && vnc.screen) {
 					var evenMove:MouseEvent = new MouseEvent(MouseEvent.MOUSE_MOVE);
 					evenMove.localX = vnc.screen.mouseX;
 					evenMove.localY = vnc.screen.mouseY;
@@ -215,12 +217,12 @@
 			}
 			
 			private function onRemoteCursorMove(position:Point):void {
-				var container:Box = Box(viewer.parent);
+				var container:IViewport = viewer.parent as IViewport;
 				
 	        	if (!mouseOnViewer || vnc.viewOnly) {
 		        	var newValue:int;
-	        		if (container.horizontalScrollBar!=null) {
-		        		var viewWidth:int = viewer.width - container.maxHorizontalScrollPosition;
+	        		if (viewerScroller.horizontalScrollBar!=null) {
+		        		var viewWidth:int = container.width;
 		        		var marginX:int = viewWidth/4;
 		        		
 		        		if (position.x<container.horizontalScrollPosition+marginX 
@@ -231,12 +233,12 @@
 		        		
 		        		if (position.x>container.horizontalScrollPosition+viewWidth-marginX) {
 	        				newValue = position.x+marginX-viewWidth;
-	        				container.horizontalScrollPosition = Math.min(newValue,container.maxHorizontalScrollPosition);
+	        				container.horizontalScrollPosition = Math.min(newValue,container.contentWidth-container.width);
 	        			}
 		        	}
 	        			
-	        		if (container.verticalScrollBar!=null) {
-		        		var viewHeight:int = viewer.height - container.maxVerticalScrollPosition;
+	        		if (viewerScroller.verticalScrollBar!=null) {
+		        		var viewHeight:int = container.height;
 		        		var marginY:int = viewHeight/4;
 	        			
 		        		if (position.y<container.verticalScrollPosition+marginY 
@@ -247,7 +249,7 @@
 		        		
 		        		if (position.y>container.verticalScrollPosition+viewHeight-marginY ) {
 	        				newValue = position.y+marginY-viewHeight;
-	        				container.verticalScrollPosition = Math.min(newValue,container.maxVerticalScrollPosition);
+	        				container.verticalScrollPosition = Math.min(newValue,container.contentHeight-container.height);
 	        			}
 		        	}
 	        	}
@@ -264,22 +266,22 @@
 			}
 			
 			private function switchFullscreen():void {
-				if (Application.application.stage.displayState == StageDisplayState.NORMAL)	{
-					Application.application.stage.displayState = StageDisplayState.FULL_SCREEN;
+				if (FlexGlobals.topLevelApplication.stage.displayState == StageDisplayState.NORMAL)	{
+					FlexGlobals.topLevelApplication.stage.displayState = StageDisplayState.FULL_SCREEN;
 				} else {
-					Application.application.stage.displayState = StageDisplayState.NORMAL;
+					FlexGlobals.topLevelApplication.stage.displayState = StageDisplayState.NORMAL;
 				}
 			}
 			
 			private function switchFullScreen():void {
 				if (fullscreenMode) {
 					fullscreenMode = false;
-					Application.application.stage.removeEventListener(FullScreenEvent.FULL_SCREEN,exitFullScreen);
-					Application.application.stage.displayState = StageDisplayState.NORMAL;
+					FlexGlobals.topLevelApplication.stage.removeEventListener(FullScreenEvent.FULL_SCREEN,exitFullScreen);
+					FlexGlobals.topLevelApplication.stage.displayState = StageDisplayState.NORMAL;
 				} else {
 					try {
-						Application.application.stage.displayState = StageDisplayState.FULL_SCREEN;
-						Application.application.stage.addEventListener(FullScreenEvent.FULL_SCREEN,exitFullScreen);
+						FlexGlobals.topLevelApplication.stage.displayState = StageDisplayState.FULL_SCREEN;
+						FlexGlobals.topLevelApplication.stage.addEventListener(FullScreenEvent.FULL_SCREEN,exitFullScreen);
 						fullscreenMode = true;
 					} catch (e:SecurityError) {
 						Alert.show('Fullscreen mode not allowed on flash movie.');
@@ -291,37 +293,54 @@
 				fullscreenMode = false;
 			}
 		]]>
-	</mx:Script>
+	</fx:Script>
 	
-	<vnc:VNCClient id="vnc"
-		vncError="Alert.show(event.message)" 
-		vncPasswordRequiered="popupAskPassword.show(vnc,this);"
-		vncRemoteCursor="onRemoteCursorMove(event.position)"
-		host="{settings.host}"
-		port="{settings.port}"
-		securityPort="{settings.securityPort}"
-		password="{password}"
-		viewOnly="{settings.viewOnly}"
-		shareConnection="{settings.shared}"
-		encoding="{settings.encoding}"
-		colorDepth="{settings.colorDepth}"
-		jpegCompression="{settings.jpegCompression}"/>
+	<fx:Declarations>
+		<vnc:VNCClient id="vnc"
+		   vncError="Alert.show(event.message)" 
+		   vncPasswordRequiered="popupAskPassword.show(vnc,this);"
+		   vncRemoteCursor="onRemoteCursorMove(event.position)"
+		   host="{settings.host}"
+		   port="{settings.port}"
+		   securityPort="{settings.securityPort}"
+		   password="{password}"
+		   viewOnly="{settings.viewOnly}"
+		   shareConnection="{settings.shared}"
+		   encoding="{settings.encoding}"
+		   colorDepth="{settings.colorDepth}"
+		   jpegCompression="{settings.jpegCompression}"
+		   updateRectangle="{updateRectangle}"
+		   framebufferHasOffset="{framebufferHasOffset}"/>
+		
+	</fx:Declarations>
 	
-	<components:ScaleBox backgroundColor="#000000" clipContent="true" width="100%" height="100%">
-		<mx:Image id="viewer" source="{vnc.screen}"
-			percentHeight="{settings.scale ? 100 : undefined}"
-			percentWidth="{settings.scale ? 100 : undefined}"
-			horizontalAlign="center" verticalAlign="middle"
-			rollOver="onViewerRollOver(event)"
-			rollOut="onViewerRollOut(event)"/>
-	</components:ScaleBox>
+	<s:SkinnableContainer width="100%" height="100%" backgroundColor="#000000">
+		<s:Scroller id="viewerScroller" width="100%" height="100%">
+			<s:Group>
+				<s:layout>
+					<s:HorizontalLayout horizontalAlign="center" verticalAlign="middle" />
+				</s:layout>
+				<mx:Image id="viewer" source="{vnc.screen}"
+						  percentHeight="{settings.scale ? 100 : undefined}"
+						  percentWidth="{settings.scale ? 100 : undefined}"
+						  horizontalAlign="center" verticalAlign="middle"
+						  rollOver="onViewerRollOver(event)"
+						  rollOut="onViewerRollOut(event)"/>
+			</s:Group>
+		</s:Scroller>
+	</s:SkinnableContainer>
 	
-	<mx:HBox id="controls" styleName="controls" width="100%" backgroundColor="#CCCCCC" verticalAlign="middle"
-		visible="{!hideControls}" height="{hideControls ? 0 : undefined}">
-		<mx:Text text="{vnc.status + (vnc.serverName ? ' '+vnc.serverName : '')}" width="100%" />
-		<components:ConnectButton vncClient="{vnc}" />
-		<mx:Button width="26" styleName="iconButton" toolTip="Settings" click="(new SettingsPopup()).show(settings,this);" icon="@Embed('/assets/settings.png')" />
-		<mx:Button width="26" height="24" styleName="iconButton" toolTip="More options" click="(new MorePopup()).show(vnc,this);" label="…" />
-		<mx:Button width="26" styleName="iconButton" toolTip="Switch Fullscreen" icon="{fullscreenMode ? fitToWindowIcon : fitToScreenIcon}"	click="switchFullScreen()"/>
-	</mx:HBox>
-</mx:Application>
+	<s:SkinnableContainer id="controls" width="100%" backgroundColor="#CCCCCC"
+						  visible="{!hideControls}" height="{hideControls ? 0 : undefined}">
+		<s:layout>
+			<s:HorizontalLayout paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" verticalAlign="middle"/>
+		</s:layout>
+		
+		<s:Label text="{vnc.status + (vnc.serverName ? ' '+vnc.serverName : '')}" width="100%" />
+		<cmp:ConnectButton height="26" vncClient="{vnc}" />
+		<mx:Button width="26" height="26" toolTip="Settings" click="(new SettingsPopup()).show(settings,this);" icon="@Embed('/assets/settings.png')"/>
+		<mx:Button width="26" height="26" toolTip="More options" click="(new MorePopup()).show(vnc,this);" label="…" />
+		<mx:Button width="26" height="26" toolTip="Switch Fullscreen" icon="{fullscreenMode ? fitToWindowIcon : fitToScreenIcon}"	click="switchFullScreen()"/>
+	</s:SkinnableContainer>
+
+</s:Application>

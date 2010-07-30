@@ -27,6 +27,7 @@ package com.flashlight.rfb
 	import com.flashlight.encoding.EncodingRRE;
 	import com.flashlight.encoding.EncodingRaw;
 	import com.flashlight.encoding.EncodingTight;
+	import com.flashlight.encoding.EncodingXCursor;
 	import com.flashlight.pixelformats.RFBPixelFormat;
 	import com.flashlight.vnc.VNCConst;
 	
@@ -376,6 +377,7 @@ package com.flashlight.rfb
 			encodings[VNCConst.ENCODING_RAW] = new EncodingRaw();
 			encodings[VNCConst.ENCODING_COPYRECT] = new EncodingCopyRect();
 			encodings[VNCConst.ENCODING_CURSOR] = new EncodingCursor();
+			encodings[VNCConst.ENCODING_XCURSOR] = new EncodingXCursor();
 			encodings[VNCConst.ENCODING_DESKTOPSIZE] = new EncodingDesktopSize();
 			encodings[VNCConst.ENCODING_CURSOR_POS] = new EncodingCursorPos();
 		}

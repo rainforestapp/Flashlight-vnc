@@ -29,6 +29,7 @@ package com.flashlight.pixelformats {
 		private static var logger:ILogger = Log.getLogger("RFBPixelFormatGradient");
 		
 		private var pixelFormat:RFBPixelFormat;
+		private var max:Array = new Array(3);
 		
 		public function RFBPixelFormatGradient(pixelFormat:RFBPixelFormat) {
 			super({
@@ -45,6 +46,19 @@ package com.flashlight.pixelformats {
 			});
 			
 			this.pixelFormat = pixelFormat;
+			max[0] = getShiftedMax(pixelFormat.maxRed);
+			max[1] = getShiftedMax(pixelFormat.maxGreen);
+			max[2] = getShiftedMax(pixelFormat.maxBlue);
+		}
+		
+		private function getShiftedMax(max:uint):uint {
+			var result:uint = max;
+			
+			while ((result << 1) < 256) {
+				result = result << 1;
+			}
+			
+			return result;
 		}
 		
 		override public function getPixelDataSize():uint {
@@ -56,7 +70,7 @@ package com.flashlight.pixelformats {
 		}
 		
 		override public function readPixels(width:uint,height:uint,inputStream:IDataInput):ByteArray {
-			var pixels:ByteArray = pixelFormat.readPixels(width,height,inputStream);
+			var pixels:ByteArray = pixelFormat.readPixelsNoRounding(width,height,inputStream);
 			
 			var pos:int = 0;
 			var rowSize:int = width*4;
@@ -67,10 +81,21 @@ package com.flashlight.pixelformats {
 					for (var c:int=0;c<3;c++) {
 						var est:int = (y-1 < 0 ? 0 : pixels[pos-rowSize]) - ((y-1 < 0 || x-1 < 0) ? 0 : pixels[pos-rowSize-4]) + (x-1 < 0 ? 0 : pixels[pos-4]);
 						if (est<0) est=0;
-						if (est>255) est=255;
+						if (est>max[c]) est=max[c];
 						pixels[pos] += est;
 						pos++;
 					}
+				}
+			}
+			
+			// Improve 16bit-depth colors
+			if (pixelFormat.bitsPerPixel == 16) {
+				pos = 0;
+				for (var i:int=0;i<width*height;i++) {
+					pos++;
+					pixels[pos++] |= pixels[pos] >> 5;
+					pixels[pos++] |= pixels[pos] >> 5;
+					pixels[pos++] |= pixels[pos] >> 6;
 				}
 			}
 			

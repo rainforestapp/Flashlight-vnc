@@ -18,16 +18,20 @@
 */
 
 package com.flashlight.pixelformats {
+	import flash.display.BitmapData;
+	import flash.filters.ColorMatrixFilter;
+	import flash.geom.Point;
 	import flash.utils.ByteArray;
+	import flash.utils.Endian;
 	import flash.utils.IDataInput;
 	
-	public class RFBPixelFormat32bpp extends RFBPixelFormat {
-		
-		public function RFBPixelFormat32bpp() {
+	public class RFBPixelFormat32bppLittleEndian extends RFBPixelFormat {
+				
+		public function RFBPixelFormat32bppLittleEndian() {
 			super({
 				bitsPerPixel: 32,
 			    depth: 24,
-			    bigEndian: true,
+			    bigEndian: false,
 			    trueColour: true,
 			    maxRed: 255,
 			    maxGreen: 255,
@@ -48,12 +52,16 @@ package com.flashlight.pixelformats {
 		
 		override public function readPixels(width:uint,height:uint,inputStream:IDataInput):ByteArray {
 			var pixels:ByteArray = new ByteArray();
-			inputStream.readBytes(pixels, 0, height*width*4);
+			inputStream.readBytes(pixels, 0, height*width*4)
+			pixels.endian = Endian.LITTLE_ENDIAN;
 			return pixels;
 		}
 		
 		override public function readPixel(inputStream:IDataInput):uint {
-			return inputStream.readUnsignedInt();
+			inputStream.endian = Endian.LITTLE_ENDIAN;
+			var result:uint = inputStream.readUnsignedInt();
+			inputStream.endian = Endian.BIG_ENDIAN;
+			return result;
 		}
 	}
 }

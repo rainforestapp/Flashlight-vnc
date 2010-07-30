@@ -58,7 +58,7 @@ package com.flashlight.pixelformats {
 		private var rectBitmapData4:BitmapData = new BitmapData(3,1000,false);
 		private var rectBitmapData:BitmapData = new BitmapData(4,1000,false);
 		
-		override public function readPixels(height:uint,width:uint,inputStream:IDataInput):ByteArray {
+		override public function readPixels(width:uint,height:uint,inputStream:IDataInput):ByteArray {
 			var data:ByteArray = new ByteArray();
 			var pixels:ByteArray = new ByteArray();
 			var i:int;

@@ -22,7 +22,7 @@ package com.flashlight.vnc
 	public class VNCConst {
 		public static const STATUS_NOT_CONNECTED:String = "Not connected";
 		public static const STATUS_CONNECTING:String = "Connecting";
-		public static const STATUS_WAITING_SERVER:String = "Waiting server";
+		public static const STATUS_WAITING_SERVER:String = "Waiting for server";
 		public static const STATUS_INITIATING:String = "Initiating";
 		public static const STATUS_AUTHENTICATING:String = "Authenticating";
 		public static const STATUS_CONNECTED:String = "Connected";
@@ -73,6 +73,7 @@ package com.flashlight.vnc
    		public static const ENCODING_TIGHT_ZLIB_LEVEL:int	= -256;
    		public static const ENCODING_TIGHT_JPEG_QUALITY:int	= -32;
 		public static const ENCODING_CURSOR:int 			= -239;
+		public static const ENCODING_XCURSOR:int 			= -240;
 		public static const ENCODING_DESKTOPSIZE:int 		= -223;
    		public static const ENCODING_CURSOR_POS:int			= -232;
 	}
