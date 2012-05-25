@@ -266,13 +266,13 @@ package com.flashlight.rfb
 								inputStream.readUnsignedShort());
 								
 								
-					//logger.info('rectangle '+rectangle);
+							//logger.info('rectangle '+rectangle);
 							
 							var encodingType:uint = inputStream.readInt();
 							
 							if (encodings[encodingType] == undefined) throw new Error("Unknown encoding type: "+encodingType.toString(16));
 														
-							logger.debug('encodingType ' +encodingType);
+							//logger.debug('encodingType ' +encodingType);
 	
 							return encodings[encodingType].getReader(inputStream, listener, rectangle,pixelFormat);
 						}
@@ -419,7 +419,10 @@ package com.flashlight.rfb
 			switch (securityType) {
 				case VNCConst.SECURITY_TYPE_NONE:
 					// Skip security result if auth==NONE and version < 3.8 
-					if (!(rfbMajorVersion >= 3 && rfbMinorVersion >= 8)) readerStack.pop();
+					if (!(rfbMajorVersion >= 3 && rfbMinorVersion >= 8)) {
+						readerStack.pop();
+						listener.onSecurityOk();
+					}
 					break;
 				case VNCConst.SECURITY_TYPE_VNC_AUTH:
 					readerStack.push(readVNCAuthChallenge);

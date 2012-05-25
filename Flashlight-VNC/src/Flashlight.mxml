@@ -125,6 +125,7 @@
 				}
 				if (parameters.colorDepth) settings.colorDepth = int(parameters.colorDepth);
 				if (parameters.jpegCompression) settings.jpegCompression = parameters.jpegCompression == "off" ? -1 : parameters.jpegCompression;
+				if (parameters.useRemoteCursor) settings.useRemoteCursor = parameters.useRemoteCursor == "true";
 				
 				if (debug) {
 					var console:TextArea = new TextArea();
@@ -134,7 +135,7 @@
 					this.addElement(console);
 					
 					var consoleTarget:ConsoleTarget = new ConsoleTarget(console)
-					consoleTarget.level = LogEventLevel.INFO;
+					consoleTarget.level = LogEventLevel.DEBUG;
 				}
 				
 				logger.debug(">> init()");
@@ -145,9 +146,18 @@
 					logger.error("Error whith right-click emulation: "+e.toString());
 				}
 				
-				if (autoConnect) vnc.connect();
+				if (autoConnect) {
+					// wait for databinding
+					var timer:Timer = new Timer(100,1);
+					timer.addEventListener(TimerEvent.TIMER_COMPLETE,onConnectTimer);
+					timer.start();
+				}
 				
 				logger.debug("<< init()");
+			}
+			
+			private function onConnectTimer(event:TimerEvent):void {
+				vnc.connect();
 			}
 			
 			private function onFrameEnter(event:Event):void {
@@ -309,8 +319,9 @@
 		   encoding="{settings.encoding}"
 		   colorDepth="{settings.colorDepth}"
 		   jpegCompression="{settings.jpegCompression}"
-		   updateRectangle="{updateRectangle}"
-		   framebufferHasOffset="{framebufferHasOffset}"/>
+		   updateRectangleSettings="{updateRectangle}"
+		   framebufferHasOffset="{framebufferHasOffset}"
+		   useRemoteCursor="{settings.useRemoteCursor}"/>
 		
 	</fx:Declarations>
 	

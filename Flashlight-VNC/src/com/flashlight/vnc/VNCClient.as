@@ -45,6 +45,7 @@ package com.flashlight.vnc
 	import flash.events.ProgressEvent;
 	import flash.events.SecurityErrorEvent;
 	import flash.events.TextEvent;
+	import flash.events.TimerEvent;
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
@@ -53,6 +54,7 @@ package com.flashlight.vnc
 	import flash.ui.Keyboard;
 	import flash.ui.Mouse;
 	import flash.utils.ByteArray;
+	import flash.utils.Timer;
 	
 	import mx.binding.utils.ChangeWatcher;
 	import mx.core.Application;
@@ -88,6 +90,8 @@ package com.flashlight.vnc
 		};
 		
 		private var pixelFormatChangePending:Boolean = false;
+		private var disableRemoteMouseEvents:Boolean = false;
+		private var updateRectangle:Rectangle;
 		
 		[Bindable] public var host:String = 'localhost';
 		[Bindable] public var port:int = 5900;
@@ -101,11 +105,12 @@ package com.flashlight.vnc
 		[Bindable] public var status:String = VNCConst.STATUS_NOT_CONNECTED;
 		
 		[Bindable] public var viewOnly:Boolean;
+		[Bindable] public var useRemoteCursor:Boolean;
 		
 		[Bindable] public var encoding:int;
 		[Bindable] public var jpegCompression:int;
 		[Bindable] public var colorDepth:int;
-		[Bindable] public var updateRectangle:Rectangle;
+		[Bindable] public var updateRectangleSettings:Rectangle;
 		[Bindable] public var framebufferHasOffset:Boolean;
 		
 		public function VNCClient() {
@@ -202,7 +207,7 @@ package com.flashlight.vnc
 			writePixelFormat();
 			writeEncodings();
 			
-			if (!updateRectangle) updateRectangle = new Rectangle(0,0,framebufferWidth,framebufferHeight);
+			updateRectangle = updateRectangleSettings ? updateRectangleSettings : new Rectangle(0,0,framebufferWidth,framebufferHeight);
 			
 			screen = new VNCScreen(framebufferHasOffset ? updateRectangle : new Rectangle(0,0,updateRectangle.width,updateRectangle.height));
 			
@@ -291,11 +296,14 @@ package com.flashlight.vnc
 				encoding,
 				VNCConst.ENCODING_RAW,
 				VNCConst.ENCODING_COPYRECT,
-				VNCConst.ENCODING_CURSOR,
-				VNCConst.ENCODING_XCURSOR,
-				VNCConst.ENCODING_DESKTOPSIZE,
-				VNCConst.ENCODING_CURSOR_POS
+				VNCConst.ENCODING_DESKTOPSIZE
 			];
+			
+			if (useRemoteCursor) {
+				encodings.push(VNCConst.ENCODING_CURSOR);
+				encodings.push(VNCConst.ENCODING_XCURSOR);
+				encodings.push(VNCConst.ENCODING_CURSOR_POS);
+			}
 			
 			if (encoding == VNCConst.ENCODING_TIGHT) {
 				encodings.push(VNCConst.ENCODING_TIGHT_ZLIB_LEVEL + 9);
@@ -311,7 +319,8 @@ package com.flashlight.vnc
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
 			if (!viewOnly) {
-				Mouse.hide();
+				if (useRemoteCursor) Mouse.hide();
+				disableRemoteMouseEvents = true;
 				captureKeyEvents = true;
 				screen.stage.focus = screen.textInput;
 			}
@@ -321,8 +330,19 @@ package com.flashlight.vnc
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
 			if (!viewOnly) {
-				Mouse.show();
+				if (useRemoteCursor) Mouse.show();
 				captureKeyEvents = false;
+				
+				// wait 500ms before activating remote cursor events to avoid cursor jittering
+				var timer:Timer = new Timer(500,1);
+				timer.addEventListener(TimerEvent.TIMER_COMPLETE,reactivateRemoteMouseEvent);
+				timer.start();
+			}
+		}
+		
+		private function reactivateRemoteMouseEvent(event:TimerEvent):void {
+			if (!captureKeyEvents) {
+				disableRemoteMouseEvents = false;
 			}
 		}
 		
@@ -447,8 +467,10 @@ package com.flashlight.vnc
 		public function onChangeCursorPos(position:Point):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
-			screen.moveCursorTo(position.x,position.y);
-			dispatchEvent(new VNCRemoteCursorEvent(position));
+			if (!disableRemoteMouseEvents) {
+				screen.moveCursorTo(position.x,position.y);
+				dispatchEvent(new VNCRemoteCursorEvent(position));
+			}
 		}
 		
 		public function onChangeCursorShape(cursorShape:BitmapData, hotSpot:Point):void {
@@ -482,13 +504,26 @@ package com.flashlight.vnc
 			rfbWriter.writeKeyEvent(false,65535,true); //DEL
 		}
 		
+		private var expectKeyInput:Boolean = false;
+		
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
 			if (captureKeyEvents) {
-				event.stopImmediatePropagation();
 				
 				var keysym:uint;
+				logger.info(">> onLocalKeyboardEvent()");
+				
+				logger.info("event.type "+event.type);
+				logger.info("event.keyCode "+event.keyCode);
+				logger.info("event.altKey "+event.altKey);
+				logger.info("event.charCode "+event.charCode);
+				logger.info("event.ctrlKey "+event.ctrlKey);
+				logger.info("event.keyLocation "+event.keyLocation);
+				logger.info("event.shiftKey "+event.shiftKey);
+				logger.info("expectKeyInput "+expectKeyInput);
+				
+				event.stopImmediatePropagation();
 				
 				switch ( event.keyCode ) {
 					case Keyboard.BACKSPACE : keysym = 0xFF08; break;
@@ -519,10 +554,25 @@ package com.flashlight.vnc
 					case Keyboard.F12  		: keysym = 0xFFC9; break;
 					case Keyboard.SHIFT 	: keysym = 0xFFE1; break;
 					case Keyboard.CONTROL	: keysym = 0xFFE3; break;
-					default: return;
+					default: {
+						if (event.type == flash.events.KeyboardEvent.KEY_DOWN && event.ctrlKey) {
+							expectKeyInput = true;
+							return;
+						}
+						if (event.type == flash.events.KeyboardEvent.KEY_UP && expectKeyInput) {
+							expectKeyInput = false;
+							rfbWriter.writeKeyEvent(true,event.charCode);
+							rfbWriter.writeKeyEvent(false,event.charCode);
+							return;
+						}
+					}
 				}
 				
-				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN ? true: false,keysym);
+				logger.info("keysym "+keysym);
+				
+				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
+				
+				logger.info("<< onLocalKeyboardEvent()");
 			}
 		}
 		
@@ -530,7 +580,14 @@ package com.flashlight.vnc
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
 			if (captureKeyEvents) {
+				
+				logger.info(">> onTextInput()");
+				
+				expectKeyInput = false;
+				
 				var input:String = event.text;
+				
+				logger.info("event.text "+event.text);
 				
 				for (var i:int=0; i<input.length ;i++) {
 					rfbWriter.writeKeyEvent(true,input.charCodeAt(i),false);
@@ -538,6 +595,9 @@ package com.flashlight.vnc
 				}
 				
 				screen.textInput.text ='';
+				
+				
+				logger.info("<< onTextInput()");
 			}
 		}
 		

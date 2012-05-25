@@ -38,8 +38,10 @@ package com.flashlight.vnc
 		private static var DefaultCursorClass:Class;
 		private static var defaultCursor:DisplayObject = new DefaultCursorClass();
 		
+		private var offsetX:int;
+		private var offsetY:int;
 		private var fixedWidth:int;
-		private var fixedHeigth:int;
+		private var fixedHeight:int;
 		private var cursor:VNCCursor;
 		private var screen:Bitmap;
 		private var screenData:BitmapData;
@@ -52,8 +54,10 @@ package com.flashlight.vnc
 			scrollRect = dimension;
 			
 			fixedWidth = dimension.width;
-			fixedHeigth = dimension.height;
-			screenData = new BitmapData(dimension.width+dimension.x, dimension.height+dimension.y, false, 0x00000000);
+			fixedHeight = dimension.height;
+			offsetX = dimension.x;
+			offsetY = dimension.y;
+			screenData = new BitmapData(offsetX+fixedWidth, offsetY+fixedHeight, false, 0x00000000);
 			screen = new Bitmap(screenData, PixelSnapping.AUTO, true);
 			
 			cursor = new VNCCursor(defaultCursor);
@@ -68,16 +72,18 @@ package com.flashlight.vnc
 		}
 		
 		public function resize(width:int, height:int):void {
-			scrollRect = new Rectangle(0,0,width,height);
+			if (width == fixedWidth && height == fixedHeight) return;
+			
+			scrollRect = new Rectangle(offsetX,offsetY,width,height);
 			
 			fixedWidth = width;
-			fixedHeigth = height;
-			screenData = new BitmapData(width, height, false, 0x00000000);
-			screen = new Bitmap(screenData, PixelSnapping.AUTO, true);
+			fixedHeight = height;
+			screenData = new BitmapData(offsetX+fixedWidth, offsetY+fixedHeight, false, 0x00000000);
+			screen.bitmapData = screenData;
 		}
 		
 		override public function get height():Number {
-			return fixedHeigth;
+			return fixedHeight;
 		}
 		
 		override public function get width():Number {

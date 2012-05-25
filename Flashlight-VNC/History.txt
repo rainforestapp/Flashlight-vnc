@@ -1,3 +1,11 @@
+v2.1.1
+Fix cursor problems on Win Xp
+Fix screen size bug between two connections
+Fix cursor jittering
+Fix Bug in authentication
+Fix Bug with autoconnect flashvar
+Add setting to disable remote cursor when VNC server is too buggy
+
 v2.1.0
 Upgrade to Flex 4.1
 Add better compatibility with Tight-VNC

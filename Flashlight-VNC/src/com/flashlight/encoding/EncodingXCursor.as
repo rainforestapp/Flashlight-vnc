@@ -79,6 +79,8 @@ package com.flashlight.encoding
 								if (pixelFormat.bitsPerPixel == 32) {
 									if ((byte & bitMask) != 0) {
 										if (pixels[pixelsPos]==0) pixels[pixelsPos] = 0xFF;
+									} else {
+										if (pixels[pixelsPos]==0xFF) pixels[pixelsPos] = 0;
 									}
 								} else {
 									pixels[pixelsPos] = (byte & bitMask) != 0 ? 0xFF : 0;

@@ -21,6 +21,7 @@ package com.flashlight.vnc
 {
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
+	import flash.display.BlendMode;
 	import flash.display.DisplayObject;
 	import flash.geom.Point;
 	
@@ -33,8 +34,8 @@ package com.flashlight.vnc
 		private var hotSpot:Point;
 		
 		public function VNCCursor(defaultCursorImage:DisplayObject) {
-			bitmapData = new BitmapData(defaultCursorImage.width, defaultCursorImage.height,true,0);
-			bitmapData.draw(defaultCursorImage);
+			//bitmapData = new BitmapData(defaultCursorImage.width, defaultCursorImage.height,true,0);
+			//bitmapData.draw(defaultCursorImage);
 			smoothing = true;
 			visible = true;
 			hotSpot = new Point(0,0);
@@ -52,6 +53,21 @@ package com.flashlight.vnc
 			this.hotSpot = hotSpot;
 			visible = true;
 			smoothing = true;
+			
+			var onlyWhite:Boolean = true;
+			for (var x:int = 0; x<bitmapData.width; x++) {
+				for (var y:int = 0; y<bitmapData.width; y++) {
+					if (bitmapData.getPixel32(x,y) != 0x00000000 && bitmapData.getPixel32(x,y) != 0xFFFFFFFF) {
+						onlyWhite = false;
+						break;
+					}
+				}
+			}
+			if (onlyWhite) {
+				blendMode = BlendMode.INVERT;
+			} else {
+				blendMode = BlendMode.NORMAL;
+			}
 		}
 
 	}

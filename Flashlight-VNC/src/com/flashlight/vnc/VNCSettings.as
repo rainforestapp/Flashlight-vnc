@@ -35,6 +35,7 @@ package com.flashlight.vnc
 		[Bindable] public var viewOnly:Boolean = true;
 		[Bindable] public var shared:Boolean = true;
 		[Bindable] public var scale:Boolean = false;
+		[Bindable] public var useRemoteCursor:Boolean = true;
 		
 		private var so:SharedObject;
 		
@@ -52,6 +53,7 @@ package com.flashlight.vnc
 					viewOnly = so.data.viewOnly;
 					shared = so.data.shared;
 					scale = so.data.scale;
+					useRemoteCursor = so.data.remoteCursor;
 				}
 				
 				addEventListener(PropertyChangeEvent.PROPERTY_CHANGE, onPropertyChange);
@@ -71,6 +73,7 @@ package com.flashlight.vnc
 				so.data.viewOnly = viewOnly;
 				so.data.shared = shared;
 				so.data.scale = scale;
+				so.data.remoteCursor = useRemoteCursor;
 				
 				so.flush();
 			}

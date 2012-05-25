@@ -25,13 +25,18 @@ package com.flashlight.encoding
 	import flash.geom.Rectangle;
 	import flash.utils.IDataInput;
 	
+	import mx.logging.ILogger;
+	import mx.logging.Log;
+	
 	public class EncodingDesktopSize implements Encoding {
+		private static var logger:ILogger = Log.getLogger("EncodingDesktopSize");
 		
 		public function getReader(inputStream:IDataInput, listener:RFBReaderListener, rectangle:Rectangle, pixelFormat:RFBPixelFormat):Object {			
 			return {
 				name:'EncodingDesktopSize',
 				bytesNeeded: 0,
 				read: function():Object {
+					logger.debug(rectangle.width +"x"+ rectangle.height);
 					listener.onChangeDesktopSize(rectangle.width, rectangle.height);
 					return null;
 				}

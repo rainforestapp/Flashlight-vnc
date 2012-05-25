@@ -54,6 +54,7 @@
 				settings.shared = shareCheck.selected;
 				settings.scale = scaleCheck.selected;
 				settings.jpegCompression = int(XML(compressionList.selectedItem).@value);
+				settings.useRemoteCursor = cursorCheck.selected;
 			}
 			
 			private function testSecurityPort():void {
@@ -183,6 +184,7 @@
 			<mx:CheckBox id="viewOnlyCheck" label="View only" selected="{settings.viewOnly}" toggle="true" />
 			<mx:CheckBox id="shareCheck" label="Share remote screen" selected="{settings.shared}" toggle="true" />
 			<mx:CheckBox id="scaleCheck" label="Scale image" selected="{settings.scale}" toggle="true" />
+			<mx:CheckBox id="cursorCheck" label="Use remote cursor image" selected="{settings.useRemoteCursor}" toggle="true" />
 		</mx:VBox>
 	</mx:HBox>
 	
