@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Copyright (C) 2011 Marco Fucci
+
+This program is free software; you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program;
+if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+Contact : mfucci@gmail.com   
+-->
+
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:flashlight="com.flashlight.*"
+					   creationComplete="init()" title="Flashlight FMS tunnel" xmlns:p2p="com.flashlight.tunnel.p2p.*" xmlns:relay="com.flashlight.tunnel.relay.*">
+	<fx:Script>
+		<![CDATA[
+			import com.flashlight.utils.ConsoleTarget;
+			
+			import mx.controls.Alert;
+			import mx.logging.ILogger;
+			import mx.logging.Log;
+			import mx.logging.LogEventLevel;
+			
+			private static const logger:ILogger = Log.getLogger("Main");
+			
+			private function init():void {
+				var target:ConsoleTarget = new ConsoleTarget(console);
+				target.level = LogEventLevel.DEBUG;
+				addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
+			}
+			
+			private function onAddedToStage(event:Event):void {
+				loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, onUncaughtError);
+				
+				// increase framerate to reduce latency
+				stage.frameRate = 200;
+			}
+			
+			private function onUncaughtError(event:UncaughtErrorEvent):void {
+				logger.error(event.error);
+				event.preventDefault();
+			}
+			
+			private function testVNCServer():void {
+				var socket:Socket = new Socket();
+				socket.addEventListener(IOErrorEvent.IO_ERROR,onIOError);
+				socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR,onSecurityError);
+				socket.addEventListener(ProgressEvent.SOCKET_DATA,onSocketData);
+				socket.connect(vncHostInput.text,Number(vncPortInput.text));
+			}
+			
+			private function onSecurityError(event:SecurityError):void {
+				Alert.show("Security Error: "+event.toString());
+			}
+			
+			private function onIOError(event:IOErrorEvent):void {
+				Alert.show("IO Error: "+event.toString());
+			}
+			
+			private function onSocketData(event:ProgressEvent):void {
+				if (event.bytesLoaded != 12) {
+					Alert.show("Error: this is not a VNC server.");
+				} else {
+					var version:String = (event.target as Socket).readUTFBytes(12);
+					if (version.substr(0,3) != "RFB") {
+						Alert.show("Error: this is not a VNC server.");
+					} else {
+						Alert.show("Success!\n"+version);
+					}
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<p2p:P2PTunnelServer id="p2pTunnel" vncHost="{vncHostInput.text}" vncPort="{int(vncPortInput.text)}" p2pServerUrl="{p2pServerUrlInput.text}" />
+		<relay:RelayTunnelServer id="relayTunnel" vncHost="{vncHostInput.text}" vncPort="{int(vncPortInput.text)}" relayServerUrl="{relayServerUrlInput.text}" streamName="{streamNameInput.text}"/>
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:VerticalLayout paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10"/>
+	</s:layout>
+	
+	<s:Group width="100%">
+		<s:Rect width="100%" height="100%">
+			<s:stroke>
+				<s:SolidColorStroke color="black" />
+			</s:stroke>
+		</s:Rect>
+		<s:VGroup width="100%" paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10">
+			<s:Label text="VNC server connection:" />
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label text="Host" />
+				<s:TextInput id="vncHostInput" text="localhost" width="100"/>
+				<s:Label text="Port" />
+				<s:TextInput id="vncPortInput" text="5900" width="50"/>
+				
+				<s:Button label="Test VNC server" click="testVNCServer()" />
+			</s:HGroup>
+		</s:VGroup>
+	</s:Group>
+	
+	<s:Group width="100%">
+		<s:Rect width="100%" height="100%">
+			<s:stroke>
+				<s:SolidColorStroke color="black" />
+			</s:stroke>
+		</s:Rect>
+		<s:VGroup width="100%" paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10">
+			<s:Label text="FMS server connection:" />
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label text="P2P" />
+				<s:TextInput id="p2pServerUrlInput" text="rtmfp://p2p.rtmfp.net/504874be3e7e73c0dfb6eb8a-dab74fad869c/" width="100%"/>
+			</s:HGroup>
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label text="Relay" />
+				<s:TextInput id="relayServerUrlInput" text="rtmp://localhost/vnc/" width="100%"/>
+			</s:HGroup>
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:Label text="Stream name" />
+				<s:TextInput id="streamNameInput" text="vnc" />
+			</s:HGroup>
+		</s:VGroup>
+	</s:Group>
+	
+	<s:Group height="10" />
+	
+	<s:HGroup width="100%" horizontalAlign="center">
+		<s:Button label="{p2pTunnel.connected ? 'Disconnect p2p' : 'Connect p2p'}" click="p2pTunnel.connected ? p2pTunnel.disconnect() : p2pTunnel.connect()" />
+		<s:Button label="{relayTunnel.connected ? 'Disconnect relay' : 'Connect relay'}" click="relayTunnel.connected ? relayTunnel.disconnect() : relayTunnel.connect()" />
+	</s:HGroup>
+	
+	<s:Group height="10" />
+	
+	<s:Group width="100%">
+		<s:Rect width="100%" height="100%">
+			<s:stroke>
+				<s:SolidColorStroke color="black" />
+			</s:stroke>
+		</s:Rect>
+		<s:VGroup width="100%" paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10">
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="Peer ID:" />
+					<s:TextInput text="{p2pTunnel.peerID}" width="100%"/>
+				</s:HGroup>
+				
+			</s:HGroup>
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="Status:" />
+					<s:Label text="{p2pTunnel.status}" />
+				</s:HGroup>
+				
+				<s:HGroup width="100%" verticalAlign="middle">
+				   <s:Label text="Clients connected:" />
+				   <s:Label text="{p2pTunnel.clients}" />
+			   </s:HGroup>
+				
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="Error message:" visible="{p2pTunnel.errorMessage!=null}" color="red"/>
+					<s:Label text="{p2pTunnel.errorMessage}" color="red"/>
+				</s:HGroup>
+			</s:HGroup>
+			
+			<s:HGroup width="100%" verticalAlign="middle">
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="Status:" />
+					<s:Label text="{relayTunnel.status}" />
+				</s:HGroup>
+				
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="Clients connected:" />
+					<s:Label text="{relayTunnel.clients}" />
+				</s:HGroup>
+				
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="Error message:" visible="{relayTunnel.errorMessage!=null}" color="red"/>
+					<s:Label text="{relayTunnel.errorMessage}" color="red"/>
+				</s:HGroup>
+			</s:HGroup>
+		</s:VGroup>
+	</s:Group>
+	
+	<s:TextArea id="console" width="100%" height="100%" />
+	
+</s:WindowedApplication>
