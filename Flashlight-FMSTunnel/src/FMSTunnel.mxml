@@ -118,7 +118,7 @@ Contact : mfucci@gmail.com
 			<s:Label text="FMS server connection:" />
 			<s:HGroup width="100%" verticalAlign="middle">
 				<s:Label text="P2P" />
-				<s:TextInput id="p2pServerUrlInput" text="rtmfp://p2p.rtmfp.net/504874be3e7e73c0dfb6eb8a-dab74fad869c/" width="100%"/>
+				<s:TextInput id="p2pServerUrlInput" text="rtmfp://p2p.rtmfp.net/[yourDeveloperKeyHere]/" width="100%"/>
 			</s:HGroup>
 			<s:HGroup width="100%" verticalAlign="middle">
 				<s:Label text="Relay" />

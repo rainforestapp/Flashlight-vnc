@@ -1,0 +1,9 @@
+1 _ Go to http://labs.adobe.com/technologies/cirrus/ and get your developer key (free)
+2 _ Launch FMSTunnel
+3 _ Replace [yourDeveloperKeyHere] by your developer key
+4 _ copy peerId (it will change each time you launch the application)
+5 _ Launch Flashlight-VNc on another computer
+6 _ click settings
+7 _ change connection method to P2P
+8 _ click connect
+9 _ paste Tunnel peerId
