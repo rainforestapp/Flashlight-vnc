@@ -508,6 +508,7 @@ package com.flashlight.vnc
 		
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
+			if(event.ctrlKey){return;} // just disable ctrl/command keys
 			
 			if (captureKeyEvents) {
 				
@@ -587,11 +588,20 @@ package com.flashlight.vnc
 				
 				var input:String = event.text;
 				
-				logger.info("event.text "+event.text);
-				
+				logger.info("event.text " + event.text);
+				var il:Boolean,cc:uint;				
 				for (var i:int=0; i<input.length ;i++) {
-					rfbWriter.writeKeyEvent(true,input.charCodeAt(i),false);
-					rfbWriter.writeKeyEvent(false,input.charCodeAt(i),(i == input.length-1));
+					cc=input.charCodeAt(i);
+					il=(i == input.length-1);
+					if(cc==58){
+						rfbWriter.writeKeyEvent(true,0xFFE1);
+					}
+					rfbWriter.writeKeyEvent(true,cc,false);
+					rfbWriter.writeKeyEvent(false,cc,il);
+					if(cc==58){
+						rfbWriter.writeKeyEvent(false,0xFFE1,il);
+					}
+
 				}
 				
 				screen.textInput.text ='';
