@@ -1,1 +1,3 @@
-bin-debug/
+bin-debug
+bin-release
+tags

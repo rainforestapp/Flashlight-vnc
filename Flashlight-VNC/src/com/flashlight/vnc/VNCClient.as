@@ -55,6 +55,7 @@ package com.flashlight.vnc
 	import flash.ui.Mouse;
 	import flash.utils.ByteArray;
 	import flash.utils.Timer;
+    import flash.utils.getTimer;
 	
 	import mx.binding.utils.ChangeWatcher;
 	import mx.core.Application;
@@ -576,6 +577,15 @@ package com.flashlight.vnc
 				logger.info("<< onLocalKeyboardEvent()");
 			}
 		}
+
+        private function sleep(ms:int):void {
+            var init:int = getTimer();
+            while(true) {
+                if(getTimer() - init >= ms) {
+                    break;
+                }
+            }
+        }
 		
 		private function onTextInput(event:TextEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
@@ -589,19 +599,21 @@ package com.flashlight.vnc
 				var input:String = event.text;
 				
 				logger.info("event.text " + event.text);
-				var il:Boolean,cc:uint;				
+				var il:Boolean,cc:uint;
 				for (var i:int=0; i<input.length ;i++) {
 					cc=input.charCodeAt(i);
-					il=(i == input.length-1);
 					if(cc==58){
-						rfbWriter.writeKeyEvent(true,0xFFE1);
+					     rfbWriter.writeKeyEvent(true,0xFFE1, true);
 					}
 					rfbWriter.writeKeyEvent(true,cc,false);
-					rfbWriter.writeKeyEvent(false,cc,il);
+					rfbWriter.writeKeyEvent(false,cc,true);
 					if(cc==58){
-						rfbWriter.writeKeyEvent(false,0xFFE1,il);
+					     rfbWriter.writeKeyEvent(false,0xFFE1, true);
 					}
-
+                    // HACK: Massive ugly hack. It seems like some server don't support 
+                    // rapid key entry very well. So we just sleep a little between 
+                    // each key.
+                    sleep(1);
 				}
 				
 				screen.textInput.text ='';
