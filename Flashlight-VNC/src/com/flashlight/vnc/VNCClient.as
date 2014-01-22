@@ -599,15 +599,26 @@ package com.flashlight.vnc
 				var input:String = event.text;
 				
 				logger.info("event.text " + event.text);
-				var il:Boolean,cc:uint;
-				for (var i:int=0; i<input.length ;i++) {
+				var useShift:Boolean; 
+				var cc:uint;
+                // :?<>"{}+_)(*&^%$#@!~
+                var needsShift:Array = [];
+				var chars:String = ":?<>\"{}+_)(*&^%$#@!~";
+				var i:int = 0;
+				
+				for (i = 0; i < chars.length; i++) {
+					needsShift.push(chars.charCodeAt(i));
+				}
+				
+				for (i=0; i<input.length ;i++) {
 					cc=input.charCodeAt(i);
-					if(cc==58){
+					useShift = needsShift.indexOf(cc) >= 0;
+					if(useShift){
 					     rfbWriter.writeKeyEvent(true,0xFFE1, true);
 					}
 					rfbWriter.writeKeyEvent(true,cc,false);
 					rfbWriter.writeKeyEvent(false,cc,true);
-					if(cc==58){
+					if(useShift){
 					     rfbWriter.writeKeyEvent(false,0xFFE1, true);
 					}
                     // HACK: Massive ugly hack. It seems like some server don't support 
