@@ -483,6 +483,7 @@ package com.flashlight.vnc
 		}
 		
 		private var captureKeyEvents:Boolean = false;
+		private var shiftKeyDown:Boolean = false;
 		private var crtKeyDown:Boolean = false;
 		
 		private function onFocusLost(event:FocusEvent):void {
@@ -554,7 +555,10 @@ package com.flashlight.vnc
 					case Keyboard.F10  		: keysym = 0xFFC7; break;
 					case Keyboard.F11  		: keysym = 0xFFC8; break;
 					case Keyboard.F12  		: keysym = 0xFFC9; break;
-					case Keyboard.SHIFT 	: keysym = 0xFFE1; break;
+					case Keyboard.SHIFT 	: 
+						keysym = 0xFFE1; 
+						shiftKeyDown = event.type == flash.events.KeyboardEvent.KEY_DOWN;
+						break;
 					case Keyboard.CONTROL	: keysym = 0xFFE3; break;
 					default: {
 						if (event.type == flash.events.KeyboardEvent.KEY_DOWN && event.ctrlKey) {
@@ -570,11 +574,11 @@ package com.flashlight.vnc
 					}
 				}
 				
-				logger.info("keysym "+keysym);
+				//logger.info("keysym "+keysym);
 				
 				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
 				
-				logger.info("<< onLocalKeyboardEvent()");
+				//logger.info("<< onLocalKeyboardEvent()");
 			}
 		}
 
@@ -597,8 +601,9 @@ package com.flashlight.vnc
 				expectKeyInput = false;
 				
 				var input:String = event.text;
-				
-				logger.info("event.text " + event.text);
+
+				logger.info("event.text " + input);
+
 				var useShift:Boolean; 
 				var cc:uint;
                 // :?<>"{}+_)(*&^%$#@!~
@@ -612,7 +617,7 @@ package com.flashlight.vnc
 				
 				for (i=0; i<input.length ;i++) {
 					cc=input.charCodeAt(i);
-					useShift = needsShift.indexOf(cc) >= 0;
+					useShift = !shiftKeyDown && needsShift.indexOf(cc) >= 0;
 					if(useShift){
 					     rfbWriter.writeKeyEvent(true,0xFFE1, true);
 					}
