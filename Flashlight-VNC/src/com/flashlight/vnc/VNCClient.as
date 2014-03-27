@@ -597,7 +597,8 @@ package com.flashlight.vnc
 			if (captureKeyEvents) {
 				
 				logger.info(">> onTextInput()");
-				
+				logger.info("Shfit Key Down? " + shiftKeyDown);
+
 				expectKeyInput = false;
 				
 				var input:String = event.text;
@@ -619,6 +620,7 @@ package com.flashlight.vnc
 					cc=input.charCodeAt(i);
 					useShift = !shiftKeyDown && needsShift.indexOf(cc) >= 0;
 					if(useShift){
+						 logger.info("Using shift for char " + cc);
 					     rfbWriter.writeKeyEvent(true,0xFFE1, true);
 					}
 					rfbWriter.writeKeyEvent(true,cc,false);
@@ -629,11 +631,10 @@ package com.flashlight.vnc
                     // HACK: Massive ugly hack. It seems like some server don't support 
                     // rapid key entry very well. So we just sleep a little between 
                     // each key.
-                    sleep(1);
+                    sleep(useShift ? 20 : 1);
 				}
 				
 				screen.textInput.text ='';
-				
 				
 				logger.info("<< onTextInput()");
 			}

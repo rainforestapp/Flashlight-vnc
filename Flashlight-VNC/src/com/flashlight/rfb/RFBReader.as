@@ -387,9 +387,9 @@ package com.flashlight.rfb
 			
 			while (nextReader.bytesNeeded <= inputStream.bytesAvailable) {
 				try {
-					logger.debug(">> "+nextReader.name);
+					//logger.debug(">> "+nextReader.name);
 					var newNextReader:Object = nextReader.read();
-					logger.debug("<< "+nextReader.name);
+					//logger.debug("<< "+nextReader.name);
 					if (newNextReader is Array) {
 						while (newNextReader.length > 0) {
 							readerStack.push(newNextReader.pop());
