@@ -73,7 +73,7 @@
 			[Bindable] private var updateRectangle:Rectangle;
 			[Bindable] private var framebufferHasOffset:Boolean = false;
 			
-			private function init():void {				
+			private function init():void {
 				var osArray:Array = Capabilities.version.split(' ');
 				var versionArray:Array = osArray[1].split(',');
 				var majorVersion:Number = parseInt(versionArray[0]);
@@ -302,6 +302,21 @@
 			private function exitFullScreen(event:FullScreenEvent):void {
 				fullscreenMode = false;
 			}
+			
+			private var UserClickedToConnect:Boolean;
+			private function ConnectClick():void{
+				if (vnc.status == "Connected"){
+					UserClickedToConnect = false;
+				}
+			}
+			private function checkStatus(strStatus:String):String{
+				if (strStatus == "Not connected" && UserClickedToConnect == true){
+					vnc.connect();
+				}else if (strStatus.toLowerCase() == "connected"){
+					UserClickedToConnect = true;
+				}
+				return strStatus;
+			} 
 		]]>
 	</fx:Script>
 	
@@ -321,7 +336,8 @@
 		   jpegCompression="{settings.jpegCompression}"
 		   updateRectangleSettings="{updateRectangle}"
 		   framebufferHasOffset="{framebufferHasOffset}"
-		   useRemoteCursor="{settings.useRemoteCursor}"/>
+		   useRemoteCursor="{settings.useRemoteCursor}"
+		   />
 		
 	</fx:Declarations>
 	
@@ -347,8 +363,8 @@
 			<s:HorizontalLayout paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" verticalAlign="middle"/>
 		</s:layout>
 		
-		<s:Label text="{vnc.status + (vnc.serverName ? ' '+vnc.serverName : '')}" width="100%" />
-		<cmp:ConnectButton height="26" vncClient="{vnc}" />
+		<s:Label text="{(vnc.status ? checkStatus(vnc.status) : checkStatus(vnc.status)) + (vnc.serverName ? ' '+vnc.serverName : '')}" width="100%" />
+		<cmp:ConnectButton height="26" vncClient="{vnc}" click="ConnectClick();"/>
 		<mx:Button width="26" height="26" toolTip="Settings" click="(new SettingsPopup()).show(settings,this);" icon="@Embed('/assets/settings.png')"/>
 		<mx:Button width="26" height="26" toolTip="More options" click="(new MorePopup()).show(vnc,this);" label="…" />
 		<mx:Button width="26" height="26" toolTip="Switch Fullscreen" icon="{fullscreenMode ? fitToWindowIcon : fitToScreenIcon}"	click="switchFullScreen()"/>
