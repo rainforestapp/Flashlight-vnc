@@ -77,11 +77,50 @@ Contact : mfucci@gmail.com
 					}
 				}
 			}
+			
+			// Code to keep reconnecting if its disconnected not by user
+			private var userConnectedp2p:Boolean;
+			private var userConnectedrelay:Boolean;
+			
+			private function connectP2p():void{
+				if (p2pTunnel.connected){
+					userConnectedp2p = false;
+					p2pTunnel.disconnect();
+				}else{
+					userConnectedp2p = true;
+					p2pTunnel.connect()
+				}
+			}
+			
+			private function connectRelay():void{
+				if (relayTunnel.connected){
+					userConnectedrelay = false;
+					relayTunnel.disconnect();
+				}else{
+					userConnectedrelay = true;
+					relayTunnel.connect();
+				}
+			}
+			
+			private function p2pstatus(strStatus:String):String{
+				if (userConnectedp2p == true && strStatus == 'Connect p2p'){
+					p2pTunnel.connect();
+				}
+				return strStatus;
+			}
+			
+			private function relayStatus(strStatus:String):String{
+				if (userConnectedrelay == true && strStatus == 'Connect relay'){
+					relayTunnel.connect();
+				}
+				return strStatus;
+			}
+			/////////////////////////////////////////////////////////////////////		
 		]]>
 	</fx:Script>
 	
 	<fx:Declarations>
-		<p2p:P2PTunnelServer id="p2pTunnel" vncHost="{vncHostInput.text}" vncPort="{int(vncPortInput.text)}" p2pServerUrl="{p2pServerUrlInput.text}" />
+		<p2p:P2PTunnelServer id="p2pTunnel"  vncHost="{vncHostInput.text}" vncPort="{int(vncPortInput.text)}" p2pServerUrl="{p2pServerUrlInput.text}" />
 		<relay:RelayTunnelServer id="relayTunnel" vncHost="{vncHostInput.text}" vncPort="{int(vncPortInput.text)}" relayServerUrl="{relayServerUrlInput.text}" streamName="{streamNameInput.text}"/>
 	</fx:Declarations>
 	
@@ -134,8 +173,8 @@ Contact : mfucci@gmail.com
 	<s:Group height="10" />
 	
 	<s:HGroup width="100%" horizontalAlign="center">
-		<s:Button label="{p2pTunnel.connected ? 'Disconnect p2p' : 'Connect p2p'}" click="p2pTunnel.connected ? p2pTunnel.disconnect() : p2pTunnel.connect()" />
-		<s:Button label="{relayTunnel.connected ? 'Disconnect relay' : 'Connect relay'}" click="relayTunnel.connected ? relayTunnel.disconnect() : relayTunnel.connect()" />
+		<s:Button label="{p2pTunnel.connected ? p2pstatus('Disconnect p2p') : p2pstatus('Connect p2p')}" click="connectP2p();" />
+		<s:Button label="{relayTunnel.connected ? relayStatus('Disconnect relay') : relayStatus('Connect relay')}" click="connectRelay();" />
 	</s:HGroup>
 	
 	<s:Group height="10" />
