@@ -36,6 +36,7 @@ package com.flashlight.vnc
 		[Bindable] public var shared:Boolean = true;
 		[Bindable] public var scale:Boolean = false;
 		[Bindable] public var useRemoteCursor:Boolean = true;
+		[Bindable] public var autoReConnect:Boolean = false;
 		
 		private var so:SharedObject;
 		

@@ -115,6 +115,8 @@ package com.flashlight.vnc
 		[Bindable] public var updateRectangleSettings:Rectangle;
 		[Bindable] public var framebufferHasOffset:Boolean;
 		
+		[Bindable] public var reConnect:Boolean;
+		
 		
 		
 		//Timer 
@@ -680,11 +682,13 @@ package com.flashlight.vnc
 		private function onSocketClose(event:Event):void {
 			if (status !== VNCConst.STATUS_NOT_CONNECTED) 
 			{
-				//onError("Connection lost",null);
 				disconnect();
-				testVNCConnection();
-				timer.addEventListener(TimerEvent.TIMER,onConnectTimer);
-				timer.start();
+				if(reConnect)
+				{
+					testVNCConnection();
+					timer.addEventListener(TimerEvent.TIMER,onConnectTimer);
+					timer.start();
+				}
 			}
 		}
 		private function onConnectTimer(event:TimerEvent):void {
@@ -702,12 +706,10 @@ package com.flashlight.vnc
 		
 		private function onVNCIOError(event:IOErrorEvent):void {
 			status = VNCConst.STATUS_WAITING_SERVER;
-			//Alert.show("IO Error when connecting to VNC server.\n["+event.type+"] "+event.text);
 		}
 		
 		private function onSecurityPortKo(event:SecurityErrorEvent):void {
 			status = VNCConst.STATUS_WAITING_SERVER;
-			//Alert.show("Flash security prevents to connect to VNC server: "+event.toString());
 		}
 		private function onVNCConnectionOk(event:Event):void {
 			connect();
