@@ -689,6 +689,10 @@ package com.flashlight.vnc
 					timer.addEventListener(TimerEvent.TIMER,onConnectTimer);
 					timer.start();
 				}
+				else
+				{
+					onError("Connection lost",null); 
+				}
 			}
 		}
 		private function onConnectTimer(event:TimerEvent):void {
@@ -705,11 +709,11 @@ package com.flashlight.vnc
 		}
 		
 		private function onVNCIOError(event:IOErrorEvent):void {
-			status = VNCConst.STATUS_WAITING_SERVER;
+			status = VNCConst.STATUS_RE_CONNECTING;
 		}
 		
 		private function onSecurityPortKo(event:SecurityErrorEvent):void {
-			status = VNCConst.STATUS_WAITING_SERVER;
+			status = VNCConst.STATUS_RE_CONNECTING;
 		}
 		private function onVNCConnectionOk(event:Event):void {
 			connect();

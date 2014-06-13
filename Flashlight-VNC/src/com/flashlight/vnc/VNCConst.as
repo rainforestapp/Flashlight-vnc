@@ -26,6 +26,7 @@ package com.flashlight.vnc
 		public static const STATUS_INITIATING:String = "Initiating";
 		public static const STATUS_AUTHENTICATING:String = "Authenticating";
 		public static const STATUS_CONNECTED:String = "Connected";
+		public static const STATUS_RE_CONNECTING:String = "We're attempting to reconnect";
 		
 		public static const RFB_VERSION_MAJOR:uint = 3;
 		public static const RFB_VERSION_MINOR:uint = 8;
