@@ -46,6 +46,7 @@ package com.flashlight.vnc
 	import flash.events.SecurityErrorEvent;
 	import flash.events.TextEvent;
 	import flash.events.TimerEvent;
+	import flash.external.ExternalInterface;
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
@@ -55,7 +56,7 @@ package com.flashlight.vnc
 	import flash.ui.Mouse;
 	import flash.utils.ByteArray;
 	import flash.utils.Timer;
-    import flash.utils.getTimer;
+	import flash.utils.getTimer;
 	
 	import mx.binding.utils.ChangeWatcher;
 	import mx.core.Application;
@@ -622,11 +623,13 @@ package com.flashlight.vnc
 					if(useShift){
 						 logger.info("Using shift for char " + cc);
 					     rfbWriter.writeKeyEvent(true,0xFFE1, true);
+						 sleep(50);
 					}
 					rfbWriter.writeKeyEvent(true,cc,false);
 					rfbWriter.writeKeyEvent(false,cc,true);
 					if(useShift){
 					     rfbWriter.writeKeyEvent(false,0xFFE1, true);
+						 sleep(50);
 					}
                     // HACK: Massive ugly hack. It seems like some server don't support 
                     // rapid key entry very well. So we just sleep a little between 
@@ -644,6 +647,16 @@ package com.flashlight.vnc
 			logger.error(specificMessage+(e ? ": "+e.getStackTrace() : ""));
 			dispatchEvent(new VNCErrorEvent(specificMessage+(e ? ": "+e.message : "")));
 			disconnect();
+			
+			if (ExternalInterface.available) { 
+				try { 
+					ExternalInterface.call("FlashlightVncOnError", specificMessage, e); 
+				} catch (e:Error) {
+					logger.error(specificMessage+(e ? ": "+e.getStackTrace() : ""));
+				}
+			} else {
+				logger.info("External interface is not available.");	
+			}
 		}
 		
 		private function onSocketConnect(event:Event):void {
