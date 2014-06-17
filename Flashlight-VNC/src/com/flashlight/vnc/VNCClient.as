@@ -59,6 +59,7 @@ package com.flashlight.vnc
 	import flash.utils.getTimer;
 	
 	import mx.binding.utils.ChangeWatcher;
+	import mx.controls.Alert;
 	import mx.core.Application;
 	import mx.events.PropertyChangeEvent;
 	import mx.logging.ILogger;
@@ -114,6 +115,13 @@ package com.flashlight.vnc
 		[Bindable] public var colorDepth:int;
 		[Bindable] public var updateRectangleSettings:Rectangle;
 		[Bindable] public var framebufferHasOffset:Boolean;
+		
+		[Bindable] public var reConnect:Boolean;
+		
+		
+		
+		//Timer 
+		public var timer:Timer = new Timer(6000);
 		
 		public function VNCClient() {
 			ChangeWatcher.watch(this,"colorDepth",onColorDepthChange);
@@ -218,6 +226,9 @@ package com.flashlight.vnc
 			rfbWriter.writeFramebufferUpdateRequest(false,updateRectangle);
 			
 			status = VNCConst.STATUS_CONNECTED;
+			
+			timer.stop();
+			timer.removeEventListener(TimerEvent.TIMER,onConnectTimer);
 			
 			logger.debug("<< onServerInit()");
 		}
@@ -682,12 +693,44 @@ package com.flashlight.vnc
 		}
 		
 		private function onSocketClose(event:Event):void {
-			if (status !== VNCConst.STATUS_NOT_CONNECTED) {
-				onError("Connection lost",null);
+			if (status !== VNCConst.STATUS_NOT_CONNECTED) 
+			{
+				disconnect();
+				if(reConnect)
+				{
+					testVNCConnection();
+					timer.addEventListener(TimerEvent.TIMER,onConnectTimer);
+					timer.start();
+				}
+				else
+				{
+					onError("Connection lost",null); 
+				}
 			}
-			disconnect();
+		}
+		private function onConnectTimer(event:TimerEvent):void {
+			testVNCConnection();
 		}
 		
+		private function testVNCConnection():void {
+			Security.loadPolicyFile("xmlsocket://"+host+":"+port);
+			var s:Socket = new Socket();
+			s.addEventListener(IOErrorEvent.IO_ERROR, onVNCIOError);
+			s.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onSecurityPortKo);
+			s.addEventListener(Event.CONNECT, onVNCConnectionOk);
+			s.connect(host,port);
+		}
+		
+		private function onVNCIOError(event:IOErrorEvent):void {
+			status = VNCConst.STATUS_RE_CONNECTING;
+		}
+		
+		private function onSecurityPortKo(event:SecurityErrorEvent):void {
+			status = VNCConst.STATUS_RE_CONNECTING;
+		}
+		private function onVNCConnectionOk(event:Event):void {
+			connect();
+		}
 		public function disconnect():void {
 			logger.debug(">> disconnect()");
 			
