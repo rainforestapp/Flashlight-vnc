@@ -95,6 +95,7 @@ package com.flashlight.vnc
 		private var pixelFormatChangePending:Boolean = false;
 		private var disableRemoteMouseEvents:Boolean = false;
 		private var updateRectangle:Rectangle;
+		private var testingStatus:String = VNCConst.TEST_CONNECTION_DISABLED;
 		
 		[Bindable] public var host:String = 'localhost';
 		[Bindable] public var port:int = 5900;
@@ -670,11 +671,27 @@ package com.flashlight.vnc
 			}
 		}
 		
+		private function onReconnect():void {
+			if (ExternalInterface.available) { 
+				try { 
+					ExternalInterface.call("FlashlightOnReconnect"); 
+				} catch (e:Error) {
+					logger.error(e ? ": "+e.getStackTrace() : "");
+				}
+			} else {
+				logger.info("External interface is not available.");	
+			}
+		}
+		
 		private function onSocketConnect(event:Event):void {
 			rfbReader = new RFBReader(socket, this);
 			
 			status = VNCConst.STATUS_WAITING_SERVER;
 			
+			if(testingStatus === VNCConst.TEST_CONNECTION_SUCCESSFUL){
+				testingStatus = VNCConst.TEST_CONNECTION_DISABLED;
+				onReconnect();
+			}
 			//Application.application.addEventListener(Event.ENTER_FRAME, onEnterNewFrame,false,0,true);
 		}
 		
@@ -698,9 +715,7 @@ package com.flashlight.vnc
 				disconnect();
 				if(reConnect)
 				{
-					testVNCConnection();
-					timer.addEventListener(TimerEvent.TIMER,onConnectTimer);
-					timer.start();
+					testConnection();
 				}
 				else
 				{
@@ -708,11 +723,27 @@ package com.flashlight.vnc
 				}
 			}
 		}
+		
+		private function testConnection():void{
+			if(testingStatus !== VNCConst.TEST_CONNECTION_CHECKING){ //Avoid multiple error listeners attempting to reconnect
+				testVNCConnection();
+				timer.addEventListener(TimerEvent.TIMER,onConnectTimer);
+				timer.start();	
+			}
+		}
+		
 		private function onConnectTimer(event:TimerEvent):void {
-			testVNCConnection();
+			if(testingStatus === VNCConst.TEST_CONNECTION_CHECKING) //If test connection is successful, stop the timer
+				testVNCConnection();
+			else{
+				timer.stop();
+				timer.reset();
+			}
 		}
 		
 		private function testVNCConnection():void {
+			testingStatus = VNCConst.TEST_CONNECTION_CHECKING;
+			
 			Security.loadPolicyFile("xmlsocket://"+host+":"+port);
 			var s:Socket = new Socket();
 			s.addEventListener(IOErrorEvent.IO_ERROR, onVNCIOError);
@@ -729,6 +760,7 @@ package com.flashlight.vnc
 			status = VNCConst.STATUS_RE_CONNECTING;
 		}
 		private function onVNCConnectionOk(event:Event):void {
+			testingStatus = VNCConst.TEST_CONNECTION_SUCCESSFUL;
 			connect();
 		}
 		public function disconnect():void {
@@ -757,11 +789,13 @@ package com.flashlight.vnc
 		
 		private function onSocketError(event:IOErrorEvent):void {
 			onError("An IO error occured: " + event.type+", "+event.text,null);
+			if(reConnect)				testConnection();
 		}
 		
 		private function onSocketSecurityError(event:SecurityErrorEvent):void {
 			onError("An security error occured ("+event.text+").\n" + 
 				"Check your policy-policy server configuration or disable security for this domain.",null);
+			if(reConnect)				testConnection();
 		}
 		
 	}
