@@ -105,6 +105,21 @@
                 </object>
                 <!--<![endif]-->
             </object>
-        </noscript>     
+        </noscript>
+        <script type="text/javascript">
+        function FlashlightVncOnError(msg, err) {
+             if ( window.console && window.console.log ) {
+                console.log(msg+(err !== null ? err : ''));
+             }
+             return "successful";
+         }
+
+        function FlashlightOnReconnect() {
+             if ( window.console && window.console.log ) {
+                console.log('Succesfuly reconnected to the server.');
+             }
+             return "successful";
+         }
+        </script>         
    </body>
 </html>
