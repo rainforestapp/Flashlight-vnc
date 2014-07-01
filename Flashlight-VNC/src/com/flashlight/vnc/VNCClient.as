@@ -35,7 +35,6 @@ package com.flashlight.vnc
 	import com.flashright.RightMouseEvent;
 	
 	import flash.display.BitmapData;
-	import flash.display.Sprite;
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
 	import flash.events.FocusEvent;
@@ -47,7 +46,6 @@ package com.flashlight.vnc
 	import flash.events.TextEvent;
 	import flash.events.TimerEvent;
 	import flash.external.ExternalInterface;
-	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	import flash.net.Socket;
@@ -59,8 +57,6 @@ package com.flashlight.vnc
 	import flash.utils.getTimer;
 	
 	import mx.binding.utils.ChangeWatcher;
-	import mx.controls.Alert;
-	import mx.core.Application;
 	import mx.events.PropertyChangeEvent;
 	import mx.logging.ILogger;
 	import mx.logging.Log;
@@ -522,11 +518,25 @@ package com.flashlight.vnc
 		private var expectKeyInput:Boolean = false;
 		
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
-			if (status != VNCConst.STATUS_CONNECTED) return;
-			if(event.ctrlKey){return;} // just disable ctrl/command keys
+			if (status != VNCConst.STATUS_CONNECTED) 
+				return;
 			
-			if (captureKeyEvents) {
-				
+			if(event.ctrlKey)
+			{
+				if(event.keyCode != Keyboard.CONTROL && event.keyCode != Keyboard.V && event.keyCode != Keyboard.C)
+				{
+					rfbWriter.writeKeyEvent(true,65507,false); //CTRL
+				}
+					
+				else
+				{
+					logger.info(">> onTextInput()");
+					return;
+				}
+			}
+			
+			if (captureKeyEvents)
+			{
 				var keysym:uint;
 				logger.info(">> onLocalKeyboardEvent()");
 				
@@ -539,7 +549,7 @@ package com.flashlight.vnc
 				logger.info("event.shiftKey "+event.shiftKey);
 				logger.info("expectKeyInput "+expectKeyInput);
 				
-				event.stopImmediatePropagation();
+				//event.stopImmediatePropagation();
 				
 				switch ( event.keyCode ) {
 					case Keyboard.BACKSPACE : keysym = 0xFF08; break;
@@ -586,42 +596,44 @@ package com.flashlight.vnc
 						}
 					}
 				}
+				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
 				
 				//logger.info("keysym "+keysym);
 				
-				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
 				
 				//logger.info("<< onLocalKeyboardEvent()");
 			}
 		}
-
-        private function sleep(ms:int):void {
-            var init:int = getTimer();
-            while(true) {
-                if(getTimer() - init >= ms) {
-                    break;
-                }
-            }
-        }
 		
-		private function onTextInput(event:TextEvent):void {
-			if (status != VNCConst.STATUS_CONNECTED) return;
+		private function sleep(ms:int):void {
+			var init:int = getTimer();
+			while(true) {
+				if(getTimer() - init >= ms) {
+					break;
+				}
+			}
+		}
+		
+		private function onTextInput(event:TextEvent):void 
+		{
+			if (status != VNCConst.STATUS_CONNECTED) 
+				return;
 			
-			if (captureKeyEvents) {
-				
+			if (captureKeyEvents)
+			{
 				logger.info(">> onTextInput()");
 				logger.info("Shfit Key Down? " + shiftKeyDown);
-
+				
 				expectKeyInput = false;
 				
 				var input:String = event.text;
-
+				
 				logger.info("event.text " + input);
-
+				
 				var useShift:Boolean; 
 				var cc:uint;
-                // :?<>"{}+_)(*&^%$#@!~
-                var needsShift:Array = [];
+				// :?<>"{}+_)(*&^%$#@!~
+				var needsShift:Array = [];
 				var chars:String = ":?<>\"{}+_)(*&^%$#@!~";
 				var i:int = 0;
 				
@@ -633,20 +645,21 @@ package com.flashlight.vnc
 					cc=input.charCodeAt(i);
 					useShift = !shiftKeyDown && needsShift.indexOf(cc) >= 0;
 					if(useShift){
-						 logger.info("Using shift for char " + cc);
-					     rfbWriter.writeKeyEvent(true,0xFFE1, true);
-						 sleep(50);
+						logger.info("Using shift for char " + cc);
+						rfbWriter.writeKeyEvent(true,0xFFE1, true);
+						sleep(50);
 					}
 					rfbWriter.writeKeyEvent(true,cc,false);
 					rfbWriter.writeKeyEvent(false,cc,true);
+					
 					if(useShift){
-					     rfbWriter.writeKeyEvent(false,0xFFE1, true);
-						 sleep(50);
+						rfbWriter.writeKeyEvent(false,0xFFE1, true);
+						sleep(50);
 					}
-                    // HACK: Massive ugly hack. It seems like some server don't support 
-                    // rapid key entry very well. So we just sleep a little between 
-                    // each key.
-                    sleep(useShift ? 20 : 1);
+					// HACK: Massive ugly hack. It seems like some server don't support 
+					// rapid key entry very well. So we just sleep a little between 
+					// each key.
+					sleep(useShift ? 20 : 1);
 				}
 				
 				screen.textInput.text ='';
@@ -673,7 +686,7 @@ package com.flashlight.vnc
 		
 		private function onReconnect():void {
 			if (ExternalInterface.available) { 
-				try { 
+				try {
 					ExternalInterface.call("FlashlightOnReconnect"); 
 				} catch (e:Error) {
 					logger.error(e ? ": "+e.getStackTrace() : "");
