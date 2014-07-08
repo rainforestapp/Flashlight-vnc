@@ -17,11 +17,9 @@
 	
 */
 
-package com.flashlight.vnc
+package com.flashlight.events
 {
-	import flash.events.Event;
-
-	public class VNCErrorEvent extends Event {
+	public class VNCErrorEvent extends VNCEvent {
 		public var message:String;
 		
 		public function VNCErrorEvent(message:String) {

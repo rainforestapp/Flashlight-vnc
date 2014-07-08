@@ -20,6 +20,7 @@ Contact : mfucci@gmail.com
 package com.flashlight.vnc
 {
 	import com.flashlight.crypt.DesCipher;
+	import com.flashlight.events.VNCReconnectEvent;
 	import com.flashlight.pixelformats.RFBPixelFormat;
 	import com.flashlight.pixelformats.RFBPixelFormat16bpp;
 	import com.flashlight.pixelformats.RFBPixelFormat16bppLittleEndian;
@@ -60,8 +61,9 @@ package com.flashlight.vnc
 	import mx.events.PropertyChangeEvent;
 	import mx.logging.ILogger;
 	import mx.logging.Log;
+	import com.flashlight.events.VNCErrorEvent;
 	
-	[Event( name="vncError", type="com.flashlight.vnc.VNCErrorEvent" )]
+	[Event( name="vncError", type="com.flashlight.events.VNCErrorEvent" )]
 	[Event( name="vncRemoteCursor", type="com.flashlight.vnc.VNCRemoteCursorEvent" )]
 	[Event( name="vncPasswordRequiered", type="com.flashlight.vnc.VNCPasswordRequieredEvent" )]
 	
@@ -118,7 +120,13 @@ package com.flashlight.vnc
 		
 		
 		//Timer 
-		public var timer:Timer = new Timer(6000);
+		/**
+		 * Reconnecting time could be changed by changing this variable.
+		 * Access publically in the program
+		 */ 
+		public var timerDelay:Number = 6000;
+		public var timer:Timer = new Timer(timerDelay);
+		
 		
 		public function VNCClient() {
 			ChangeWatcher.watch(this,"colorDepth",onColorDepthChange);
@@ -685,13 +693,16 @@ package com.flashlight.vnc
 		}
 		
 		private function onReconnect():void {
-			if (ExternalInterface.available) { 
+			this.dispatchEvent(new VNCReconnectEvent(VNCReconnectEvent.SUCCESSFULLY_RECONNECTED));
+			
+			if (ExternalInterface.available){
 				try {
 					ExternalInterface.call("FlashlightOnReconnect"); 
 				} catch (e:Error) {
 					logger.error(e ? ": "+e.getStackTrace() : "");
 				}
-			} else {
+			}
+			else{
 				logger.info("External interface is not available.");	
 			}
 		}
@@ -741,11 +752,14 @@ package com.flashlight.vnc
 			if(testingStatus !== VNCConst.TEST_CONNECTION_CHECKING){ //Avoid multiple error listeners attempting to reconnect
 				testVNCConnection();
 				timer.addEventListener(TimerEvent.TIMER,onConnectTimer);
-				timer.start();	
+				timer.start();
+				this.dispatchEvent(new VNCReconnectEvent(VNCReconnectEvent.RECONNECTING));
 			}
 		}
 		
 		private function onConnectTimer(event:TimerEvent):void {
+			this.dispatchEvent(new VNCReconnectEvent(VNCReconnectEvent.TIMER_STARTS));
+			
 			if(testingStatus === VNCConst.TEST_CONNECTION_CHECKING) //If test connection is successful, stop the timer
 				testVNCConnection();
 			else{
