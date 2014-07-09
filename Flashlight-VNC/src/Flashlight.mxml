@@ -22,7 +22,8 @@
 			   xmlns:cmp="com.flashlight.components.*"
 			   xmlns:vnc="com.flashlight.vnc.*"
 			   creationComplete="init()" 
-	           backgroundColor="#000000">
+	           backgroundColor="#000000"
+			   initialize="onInitialize(event)">
 	
 	<s:layout>
 		<s:VerticalLayout gap="0" />
@@ -32,24 +33,22 @@
 		<![CDATA[
 			import com.flashlight.components.AskPasswordPopup;
 			import com.flashlight.components.MorePopup;
+			import com.flashlight.components.ReconnectingCountDown;
 			import com.flashlight.components.SettingsPopup;
+			import com.flashlight.events.VNCReconnectEvent;
 			import com.flashlight.utils.ConsoleTarget;
 			import com.flashlight.vnc.VNCConst;
 			import com.flashlight.vnc.VNCSettings;
 			import com.flashright.JsRightClick;
 			
-			import mx.containers.Box;
 			import mx.controls.Alert;
-			import mx.controls.Text;
-			import mx.core.Container;
 			import mx.core.FlexGlobals;
 			import mx.core.UIComponent;
-			import mx.formatters.SwitchSymbolFormatter;
+			import mx.events.FlexEvent;
 			import mx.logging.ILogger;
 			import mx.logging.Log;
 			import mx.logging.LogEventLevel;
 			import mx.managers.PopUpManager;
-			import mx.utils.URLUtil;
 			
 			import spark.components.TextArea;
 			import spark.core.IViewport;
@@ -61,6 +60,13 @@
 			
 			private var popupAskPassword:AskPasswordPopup = new AskPasswordPopup();
 			
+			private var reconnectingTimer:ReconnectingCountDown;
+			
+			private var secondsRemaining:int;
+			
+			private var vncReconnectTimer:Timer;
+			
+			private var connectingMessage:Label;
 			
 			[Embed(source="/assets/fitToScreen.png")] [Bindable] private var fitToScreenIcon:Class;
 			[Embed(source="/assets/fitToWindow.png")] [Bindable] private var fitToWindowIcon:Class;
@@ -305,6 +311,96 @@
 			private function exitFullScreen(event:FullScreenEvent):void {
 				fullscreenMode = false;
 			}
+			
+			private function onInitialize(event:FlexEvent):void
+			{
+				vncReconnectTimer = new Timer(1000);
+				secondsRemaining = 6;
+				showConnectingTimer = false;
+				connectingMessage = new Label();
+				connectingMessage.text = 'Connecting ...';
+				
+				vnc.addEventListener(VNCReconnectEvent.RECONNECTING, checkForFullScreenModeOnReconnecting);
+				vnc.addEventListener(VNCReconnectEvent.TIMER_STARTS, onTimerStarts);
+				vnc.addEventListener(VNCReconnectEvent.SUCCESSFULLY_RECONNECTED, removePopUpOnReconnect);
+			}
+			
+			private var showConnectingTimer:Boolean;
+			private var firstRun:Boolean;
+			
+			private function checkForFullScreenModeOnReconnecting(event:Event):void
+			{
+				if(fullscreenMode)
+				{
+					showConnectingTimer = false;
+					firstRun = true;
+					
+					reconnectingTimer = new ReconnectingCountDown();
+					this.addEventListener(Event.ENTER_FRAME, onReconnectingTimerChange);
+					
+					PopUpManager.addPopUp(reconnectingTimer, this, true);
+					PopUpManager.centerPopUp(reconnectingTimer);
+					
+					trace('A black screen must be displayed');
+				}
+			}
+			
+			private function onTimerStarts(event:Event):void
+			{
+				if(fullscreenMode)
+				{
+					if(showConnectingTimer)
+					{
+						showConnectingTimer = false;
+						secondsRemaining = vnc.timerDelay / 1000;
+						
+						reconnectingTimer.visible = true;
+						connectingMessage.visible = false;
+					}
+					else
+					{
+						if(firstRun)
+						{
+							firstRun = false;
+							PopUpManager.addPopUp(connectingMessage, this, true);
+							PopUpManager.centerPopUp(connectingMessage);
+						}
+						
+						reconnectingTimer.visible = false;
+						connectingMessage.visible = true;
+						showConnectingTimer=true;
+					}
+				}
+				
+			}
+			
+			private function updateTime():int
+			{
+				vncReconnectTimer.addEventListener(TimerEvent.TIMER, updateReconnecingCounter);
+				vncReconnectTimer.start();
+				
+				return secondsRemaining;
+			}
+			
+			private function onReconnectingTimerChange(event:Event):void
+			{
+				if(updateTime() >= 0)
+					reconnectingTimer.seconds = updateTime();
+				else
+					secondsRemaining = vnc.timerDelay / 1000;
+			}
+			
+			private function updateReconnecingCounter(event:TimerEvent):void
+			{
+				secondsRemaining--;
+			}
+			
+			private function removePopUpOnReconnect(event:Event):void
+			{
+				PopUpManager.removePopUp(reconnectingTimer);
+				PopUpManager.removePopUp(connectingMessage);
+			}
+			
 		]]>
 	</fx:Script>
 	

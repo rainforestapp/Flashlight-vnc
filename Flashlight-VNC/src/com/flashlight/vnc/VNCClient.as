@@ -20,6 +20,8 @@ Contact : mfucci@gmail.com
 package com.flashlight.vnc
 {
 	import com.flashlight.crypt.DesCipher;
+	import com.flashlight.events.VNCErrorEvent;
+	import com.flashlight.events.VNCReconnectEvent;
 	import com.flashlight.pixelformats.RFBPixelFormat;
 	import com.flashlight.pixelformats.RFBPixelFormat16bpp;
 	import com.flashlight.pixelformats.RFBPixelFormat16bppLittleEndian;
@@ -35,7 +37,6 @@ package com.flashlight.vnc
 	import com.flashright.RightMouseEvent;
 	
 	import flash.display.BitmapData;
-	import flash.display.Sprite;
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
 	import flash.events.FocusEvent;
@@ -47,7 +48,6 @@ package com.flashlight.vnc
 	import flash.events.TextEvent;
 	import flash.events.TimerEvent;
 	import flash.external.ExternalInterface;
-	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	import flash.net.Socket;
@@ -59,13 +59,12 @@ package com.flashlight.vnc
 	import flash.utils.getTimer;
 	
 	import mx.binding.utils.ChangeWatcher;
-	import mx.controls.Alert;
-	import mx.core.Application;
 	import mx.events.PropertyChangeEvent;
 	import mx.logging.ILogger;
 	import mx.logging.Log;
+
 	
-	[Event( name="vncError", type="com.flashlight.vnc.VNCErrorEvent" )]
+	[Event( name="vncError", type="com.flashlight.events.VNCErrorEvent" )]
 	[Event( name="vncRemoteCursor", type="com.flashlight.vnc.VNCRemoteCursorEvent" )]
 	[Event( name="vncPasswordRequiered", type="com.flashlight.vnc.VNCPasswordRequieredEvent" )]
 	
@@ -96,6 +95,9 @@ package com.flashlight.vnc
 		private var disableRemoteMouseEvents:Boolean = false;
 		private var updateRectangle:Rectangle;
 		private var testingStatus:String = VNCConst.TEST_CONNECTION_DISABLED;
+		private var mouseButtonMask:int = 0;
+		
+		private var reconnectCheck:Boolean;
 		
 		[Bindable] public var host:String = 'localhost';
 		[Bindable] public var port:int = 5900;
@@ -122,7 +124,13 @@ package com.flashlight.vnc
 		
 		
 		//Timer 
-		public var timer:Timer = new Timer(6000);
+		/**
+		 * Reconnecting time could be changed by changing this variable.
+		 * Access publically in the program
+		 */ 
+		public var timerDelay:Number = 6000;
+		public var timer:Timer = new Timer(timerDelay);
+		
 		
 		public function VNCClient() {
 			ChangeWatcher.watch(this,"colorDepth",onColorDepthChange);
@@ -327,8 +335,6 @@ package com.flashlight.vnc
 			rfbWriter.writeSetEncodings(encodings);
 		}
 		
-		private var mouseButtonMask:int = 0;
-		
 		public function onLocalMouseRollOver(event:MouseEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
@@ -522,11 +528,25 @@ package com.flashlight.vnc
 		private var expectKeyInput:Boolean = false;
 		
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
-			if (status != VNCConst.STATUS_CONNECTED) return;
-			if(event.ctrlKey){return;} // just disable ctrl/command keys
+			if (status != VNCConst.STATUS_CONNECTED) 
+				return;
 			
-			if (captureKeyEvents) {
-				
+			if(event.ctrlKey)
+			{
+				if(event.keyCode != Keyboard.CONTROL && event.keyCode != Keyboard.V && event.keyCode != Keyboard.C)
+				{
+					rfbWriter.writeKeyEvent(true,65507,false); //CTRL
+				}
+					
+				else
+				{
+					logger.info(">> onTextInput()");
+					return;
+				}
+			}
+			
+			if (captureKeyEvents)
+			{
 				var keysym:uint;
 				logger.info(">> onLocalKeyboardEvent()");
 				
@@ -539,7 +559,7 @@ package com.flashlight.vnc
 				logger.info("event.shiftKey "+event.shiftKey);
 				logger.info("expectKeyInput "+expectKeyInput);
 				
-				event.stopImmediatePropagation();
+				//event.stopImmediatePropagation();
 				
 				switch ( event.keyCode ) {
 					case Keyboard.BACKSPACE : keysym = 0xFF08; break;
@@ -586,42 +606,44 @@ package com.flashlight.vnc
 						}
 					}
 				}
+				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
 				
 				//logger.info("keysym "+keysym);
 				
-				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
 				
 				//logger.info("<< onLocalKeyboardEvent()");
 			}
 		}
-
-        private function sleep(ms:int):void {
-            var init:int = getTimer();
-            while(true) {
-                if(getTimer() - init >= ms) {
-                    break;
-                }
-            }
-        }
 		
-		private function onTextInput(event:TextEvent):void {
-			if (status != VNCConst.STATUS_CONNECTED) return;
+		private function sleep(ms:int):void {
+			var init:int = getTimer();
+			while(true) {
+				if(getTimer() - init >= ms) {
+					break;
+				}
+			}
+		}
+		
+		private function onTextInput(event:TextEvent):void 
+		{
+			if (status != VNCConst.STATUS_CONNECTED) 
+				return;
 			
-			if (captureKeyEvents) {
-				
+			if (captureKeyEvents)
+			{
 				logger.info(">> onTextInput()");
 				logger.info("Shfit Key Down? " + shiftKeyDown);
-
+				
 				expectKeyInput = false;
 				
 				var input:String = event.text;
-
+				
 				logger.info("event.text " + input);
-
+				
 				var useShift:Boolean; 
 				var cc:uint;
-                // :?<>"{}+_)(*&^%$#@!~
-                var needsShift:Array = [];
+				// :?<>"{}+_)(*&^%$#@!~
+				var needsShift:Array = [];
 				var chars:String = ":?<>\"{}+_)(*&^%$#@!~";
 				var i:int = 0;
 				
@@ -633,20 +655,21 @@ package com.flashlight.vnc
 					cc=input.charCodeAt(i);
 					useShift = !shiftKeyDown && needsShift.indexOf(cc) >= 0;
 					if(useShift){
-						 logger.info("Using shift for char " + cc);
-					     rfbWriter.writeKeyEvent(true,0xFFE1, true);
-						 sleep(50);
+						logger.info("Using shift for char " + cc);
+						rfbWriter.writeKeyEvent(true,0xFFE1, true);
+						sleep(50);
 					}
 					rfbWriter.writeKeyEvent(true,cc,false);
 					rfbWriter.writeKeyEvent(false,cc,true);
+					
 					if(useShift){
-					     rfbWriter.writeKeyEvent(false,0xFFE1, true);
-						 sleep(50);
+						rfbWriter.writeKeyEvent(false,0xFFE1, true);
+						sleep(50);
 					}
-                    // HACK: Massive ugly hack. It seems like some server don't support 
-                    // rapid key entry very well. So we just sleep a little between 
-                    // each key.
-                    sleep(useShift ? 20 : 1);
+					// HACK: Massive ugly hack. It seems like some server don't support 
+					// rapid key entry very well. So we just sleep a little between 
+					// each key.
+					sleep(useShift ? 20 : 1);
 				}
 				
 				screen.textInput.text ='';
@@ -672,13 +695,17 @@ package com.flashlight.vnc
 		}
 		
 		private function onReconnect():void {
-			if (ExternalInterface.available) { 
-				try { 
+			this.dispatchEvent(new VNCReconnectEvent(VNCReconnectEvent.SUCCESSFULLY_RECONNECTED));
+			
+			if (ExternalInterface.available){
+				try {
+					reconnectCheck = true;
 					ExternalInterface.call("FlashlightOnReconnect"); 
 				} catch (e:Error) {
 					logger.error(e ? ": "+e.getStackTrace() : "");
 				}
-			} else {
+			}
+			else{
 				logger.info("External interface is not available.");	
 			}
 		}
@@ -728,11 +755,15 @@ package com.flashlight.vnc
 			if(testingStatus !== VNCConst.TEST_CONNECTION_CHECKING){ //Avoid multiple error listeners attempting to reconnect
 				testVNCConnection();
 				timer.addEventListener(TimerEvent.TIMER,onConnectTimer);
-				timer.start();	
+				timer.start();
+				this.dispatchEvent(new VNCReconnectEvent(VNCReconnectEvent.RECONNECTING));
 			}
 		}
 		
 		private function onConnectTimer(event:TimerEvent):void {
+			reconnectCheck = false;
+			this.dispatchEvent(new VNCReconnectEvent(VNCReconnectEvent.TIMER_STARTS));
+			
 			if(testingStatus === VNCConst.TEST_CONNECTION_CHECKING) //If test connection is successful, stop the timer
 				testVNCConnection();
 			else{
@@ -753,11 +784,13 @@ package com.flashlight.vnc
 		}
 		
 		private function onVNCIOError(event:IOErrorEvent):void {
-			status = VNCConst.STATUS_RE_CONNECTING;
+			if(!reconnectCheck)
+				status = VNCConst.STATUS_RE_CONNECTING;
 		}
 		
 		private function onSecurityPortKo(event:SecurityErrorEvent):void {
-			status = VNCConst.STATUS_RE_CONNECTING;
+			if(!reconnectCheck)
+				status = VNCConst.STATUS_RE_CONNECTING;
 		}
 		private function onVNCConnectionOk(event:Event):void {
 			testingStatus = VNCConst.TEST_CONNECTION_SUCCESSFUL;
