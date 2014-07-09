@@ -20,6 +20,7 @@ Contact : mfucci@gmail.com
 package com.flashlight.vnc
 {
 	import com.flashlight.crypt.DesCipher;
+	import com.flashlight.events.VNCErrorEvent;
 	import com.flashlight.events.VNCReconnectEvent;
 	import com.flashlight.pixelformats.RFBPixelFormat;
 	import com.flashlight.pixelformats.RFBPixelFormat16bpp;
@@ -61,7 +62,7 @@ package com.flashlight.vnc
 	import mx.events.PropertyChangeEvent;
 	import mx.logging.ILogger;
 	import mx.logging.Log;
-	import com.flashlight.events.VNCErrorEvent;
+
 	
 	[Event( name="vncError", type="com.flashlight.events.VNCErrorEvent" )]
 	[Event( name="vncRemoteCursor", type="com.flashlight.vnc.VNCRemoteCursorEvent" )]
@@ -94,6 +95,9 @@ package com.flashlight.vnc
 		private var disableRemoteMouseEvents:Boolean = false;
 		private var updateRectangle:Rectangle;
 		private var testingStatus:String = VNCConst.TEST_CONNECTION_DISABLED;
+		private var mouseButtonMask:int = 0;
+		
+		private var reconnectCheck:Boolean;
 		
 		[Bindable] public var host:String = 'localhost';
 		[Bindable] public var port:int = 5900;
@@ -330,8 +334,6 @@ package com.flashlight.vnc
 			
 			rfbWriter.writeSetEncodings(encodings);
 		}
-		
-		private var mouseButtonMask:int = 0;
 		
 		public function onLocalMouseRollOver(event:MouseEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
@@ -697,6 +699,7 @@ package com.flashlight.vnc
 			
 			if (ExternalInterface.available){
 				try {
+					reconnectCheck = true;
 					ExternalInterface.call("FlashlightOnReconnect"); 
 				} catch (e:Error) {
 					logger.error(e ? ": "+e.getStackTrace() : "");
@@ -758,6 +761,7 @@ package com.flashlight.vnc
 		}
 		
 		private function onConnectTimer(event:TimerEvent):void {
+			reconnectCheck = false;
 			this.dispatchEvent(new VNCReconnectEvent(VNCReconnectEvent.TIMER_STARTS));
 			
 			if(testingStatus === VNCConst.TEST_CONNECTION_CHECKING) //If test connection is successful, stop the timer
@@ -780,11 +784,13 @@ package com.flashlight.vnc
 		}
 		
 		private function onVNCIOError(event:IOErrorEvent):void {
-			status = VNCConst.STATUS_RE_CONNECTING;
+			if(!reconnectCheck)
+				status = VNCConst.STATUS_RE_CONNECTING;
 		}
 		
 		private function onSecurityPortKo(event:SecurityErrorEvent):void {
-			status = VNCConst.STATUS_RE_CONNECTING;
+			if(!reconnectCheck)
+				status = VNCConst.STATUS_RE_CONNECTING;
 		}
 		private function onVNCConnectionOk(event:Event):void {
 			testingStatus = VNCConst.TEST_CONNECTION_SUCCESSFUL;
