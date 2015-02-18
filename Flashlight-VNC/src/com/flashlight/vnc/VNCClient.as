@@ -622,7 +622,7 @@ package com.flashlight.vnc
 				var cc:uint;
                 // :?<>"{}+_)(*&^%$#@!~
                 var needsShift:Array = [];
-				var chars:String = ":?<>\"{}+_)(*&^%$#@!~";
+				var chars:String = ":?<>\"{}+_)(*&^%$#@!~ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 				var i:int = 0;
 				
 				for (i = 0; i < chars.length; i++) {
