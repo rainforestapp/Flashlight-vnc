@@ -103,6 +103,7 @@ package com.flashlight.vnc
 		[Bindable] public var securityPort:int = 0;
 		[Bindable] public var shareConnection:Boolean = true;
 		[Bindable] public var password:String;
+		[Bindable] public var pastePauseDelay:int = 50;
 		
 		[Bindable] public var serverName:String;
 		[Bindable] public var screen:VNCScreen;
@@ -634,7 +635,7 @@ package com.flashlight.vnc
 					if(useShift){
 						setTimeout(rfbWriter.writeKeyEvent, waitTime += 50, false, 0xFFE1, true);
 					}
-					waitTime += 100;
+					waitTime += pastePauseDelay;
 				}
 				
 				screen.textInput.text ='';
