@@ -68,6 +68,7 @@
 			[Bindable] private var settings:VNCSettings = new VNCSettings();
 			[Bindable] private var hideControls:Boolean;
 			[Bindable] private var password:String;
+			[Bindable] private var pastePauseDelay:uint = 50;
 			[Bindable] private var fullscreenMode:Boolean = false;
 			
 			[Bindable] private var updateRectangle:Rectangle;
@@ -95,6 +96,7 @@
 				if (parameters.host) settings.host = parameters.host;
 				if (parameters.port) settings.port = int(parameters.port);
 				if (parameters.password) password = parameters.password;
+				if (parameters.pastePauseDelay) pastePauseDelay = parameters.pastePauseDelay;
 				if (parameters.securityPort) {
 					settings.securityPort = int(parameters.securityPort);
 					settings.useSecurity = true;
@@ -317,6 +319,7 @@
 		   port="{settings.port}"
 		   securityPort="{settings.securityPort}"
 		   password="{password}"
+		   pastePauseDelay="{pastePauseDelay}"
 		   viewOnly="{settings.viewOnly}"
 		   shareConnection="{settings.shared}"
 		   encoding="{settings.encoding}"

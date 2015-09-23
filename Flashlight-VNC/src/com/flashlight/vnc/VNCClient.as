@@ -57,6 +57,7 @@ package com.flashlight.vnc
 	import flash.utils.ByteArray;
 	import flash.utils.Timer;
 	import flash.utils.getTimer;
+	import flash.utils.setTimeout;
 	
 	import mx.binding.utils.ChangeWatcher;
 	import mx.controls.Alert;
@@ -102,6 +103,7 @@ package com.flashlight.vnc
 		[Bindable] public var securityPort:int = 0;
 		[Bindable] public var shareConnection:Boolean = true;
 		[Bindable] public var password:String;
+		[Bindable] public var pastePauseDelay:int = 50;
 		
 		[Bindable] public var serverName:String;
 		[Bindable] public var screen:VNCScreen;
@@ -595,22 +597,13 @@ package com.flashlight.vnc
 			}
 		}
 
-        private function sleep(ms:int):void {
-            var init:int = getTimer();
-            while(true) {
-                if(getTimer() - init >= ms) {
-                    break;
-                }
-            }
-        }
-		
 		private function onTextInput(event:TextEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
 			if (captureKeyEvents) {
 				
 				logger.info(">> onTextInput()");
-				logger.info("Shfit Key Down? " + shiftKeyDown);
+				logger.info("Shift Key Down? " + shiftKeyDown);
 
 				expectKeyInput = false;
 				
@@ -629,24 +622,20 @@ package com.flashlight.vnc
 					needsShift.push(chars.charCodeAt(i));
 				}
 				
+				var waitTime:int = 0;
 				for (i=0; i<input.length ;i++) {
 					cc=input.charCodeAt(i);
 					useShift = !shiftKeyDown && needsShift.indexOf(cc) >= 0;
 					if(useShift){
 						 logger.info("Using shift for char " + cc);
-					     rfbWriter.writeKeyEvent(true,0xFFE1, true);
-						 sleep(50);
+						 setTimeout(rfbWriter.writeKeyEvent, waitTime += 50, true, 0xFFE1, true);
 					}
-					rfbWriter.writeKeyEvent(true,cc,false);
-					rfbWriter.writeKeyEvent(false,cc,true);
+					setTimeout(rfbWriter.writeKeyEvent, waitTime += 20, true, cc, false);
+					setTimeout(rfbWriter.writeKeyEvent, waitTime += 20, false, cc, true);
 					if(useShift){
-					     rfbWriter.writeKeyEvent(false,0xFFE1, true);
-						 sleep(50);
+						setTimeout(rfbWriter.writeKeyEvent, waitTime += 50, false, 0xFFE1, true);
 					}
-                    // HACK: Massive ugly hack. It seems like some server don't support 
-                    // rapid key entry very well. So we just sleep a little between 
-                    // each key.
-                    sleep(useShift ? 20 : 1);
+					waitTime += pastePauseDelay;
 				}
 				
 				screen.textInput.text ='';
