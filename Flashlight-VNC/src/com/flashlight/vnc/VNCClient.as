@@ -525,7 +525,6 @@ package com.flashlight.vnc
 		
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
-			if(event.ctrlKey){return;} // just disable ctrl/command keys
 			
 			if (captureKeyEvents) {
 				
@@ -541,7 +540,10 @@ package com.flashlight.vnc
 				logger.info("event.shiftKey "+event.shiftKey);
 				logger.info("expectKeyInput "+expectKeyInput);
 				
-				event.stopImmediatePropagation();
+				// Ignore Ctrl-v, onTextInput() handles this
+				if (event.ctrlKey && event.keyCode == Keyboard.V) {
+					return;
+				}
 				
 				switch ( event.keyCode ) {
 					case Keyboard.BACKSPACE : keysym = 0xFF08; break;
@@ -570,28 +572,20 @@ package com.flashlight.vnc
 					case Keyboard.F10  		: keysym = 0xFFC7; break;
 					case Keyboard.F11  		: keysym = 0xFFC8; break;
 					case Keyboard.F12  		: keysym = 0xFFC9; break;
+					case 91               : keysym = 0xFFEB; break; // Windows key
 					case Keyboard.SHIFT 	: 
 						keysym = 0xFFE1; 
 						shiftKeyDown = event.type == flash.events.KeyboardEvent.KEY_DOWN;
 						break;
 					case Keyboard.CONTROL	: keysym = 0xFFE3; break;
-					default: {
-						if (event.type == flash.events.KeyboardEvent.KEY_DOWN && event.ctrlKey) {
-							expectKeyInput = true;
-							return;
-						}
-						if (event.type == flash.events.KeyboardEvent.KEY_UP && expectKeyInput) {
-							expectKeyInput = false;
-							rfbWriter.writeKeyEvent(true,event.charCode);
-							rfbWriter.writeKeyEvent(false,event.charCode);
-							return;
-						}
-					}
 				}
 				
 				//logger.info("keysym "+keysym);
 				
 				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
+
+				// prevent onTextInput() from firing
+				//event.stopImmediatePropagation();
 				
 				//logger.info("<< onLocalKeyboardEvent()");
 			}
@@ -601,7 +595,6 @@ package com.flashlight.vnc
 			if (status != VNCConst.STATUS_CONNECTED) return;
 			
 			if (captureKeyEvents) {
-				
 				logger.info(">> onTextInput()");
 				logger.info("Shift Key Down? " + shiftKeyDown);
 
@@ -625,15 +618,20 @@ package com.flashlight.vnc
 				var waitTime:int = 0;
 				for (i=0; i<input.length ;i++) {
 					cc=input.charCodeAt(i);
+					rfbWriter.writeKeyEvent(false,0xFFE3,true);
 					useShift = !shiftKeyDown && needsShift.indexOf(cc) >= 0;
 					if(useShift){
 						 logger.info("Using shift for char " + cc);
-						 setTimeout(rfbWriter.writeKeyEvent, waitTime += 50, true, 0xFFE1, true);
+						 setTimeout(rfbWriter.writeKeyEvent, waitTime += 45, false, 0xFFE3, true);
+						 setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, true, 0xFFE1, true);
 					}
-					setTimeout(rfbWriter.writeKeyEvent, waitTime += 20, true, cc, false);
-					setTimeout(rfbWriter.writeKeyEvent, waitTime += 20, false, cc, true);
+					setTimeout(rfbWriter.writeKeyEvent, waitTime += 15, false, 0xFFE3, true);
+					setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, true, cc, true);
+					setTimeout(rfbWriter.writeKeyEvent, waitTime += 15, false, 0xFFE3, true);
+					setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, false, cc, true);
 					if(useShift){
-						setTimeout(rfbWriter.writeKeyEvent, waitTime += 50, false, 0xFFE1, true);
+						setTimeout(rfbWriter.writeKeyEvent, waitTime += 45, false, 0xFFE3, true);
+						setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, false, 0xFFE1, true);
 					}
 					waitTime += pastePauseDelay;
 				}
