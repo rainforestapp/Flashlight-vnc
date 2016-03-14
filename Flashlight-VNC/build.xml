@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- myWrapperBuild.xml -->
+<project name="flashlight" basedir="." default="main">
+    <property environment="env"/>
+    <property name="FLEX_HOME" value="${env.FLEX_BASE}/apache-flex-sdk-4.14.1-bin"/>
+    <fail message="Environment variable PLAYERGLOBAL_HOME must be set" unless="env.PLAYERGLOBAL_HOME"/>
+    <property name="APP_ROOT" value="./bin/"/>
+    <taskdef resource="flexTasks.tasks" classpath="${FLEX_HOME}/ant/lib/flexTasks.jar"/>
+    <target name="main">
+        <mxmlc
+            debug="false"
+            file="src/Flashlight.mxml"
+            output="bin/Flashlight.swf"
+            warnings="true"
+            locale="en_US"
+            strict="true"
+            accessible="false"
+            remove-unused-rsls="true"
+            verify-digests="true"
+            keep-generated-actionscript="true">
+            <!-- It is not possible to set the following via ant with 4.14.1
+                 compiler.show-shadowed-device-font-warnings="true"
+                 compiler.defaults-css-files+=MXFTEText.css
+            -->
+            <!-- Use dump config to see the compiler output
+                 <dump-config>config-dump.xml</dump-config>
+             -->
+        </mxmlc>
+    </target>
+    <target name="wrapper">
+        <html-wrapper
+            title="Flashlight VNC client"
+            file="index.html"
+            width="1024"
+            height="768"
+            application="app"
+            swf="Flashlight"
+            history="true"
+            express-install="false"
+            version-major="11"
+            version-minor="1"
+            version-revision="0"
+            version-detection="true"
+            output="${APP_ROOT}"/>
+    </target>
+    <target name="clean">
+        <delete>
+            <fileset dir="${APP_ROOT}"/>
+        </delete>
+    </target>
+</project>
