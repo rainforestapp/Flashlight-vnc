@@ -1,0 +1,23 @@
+general:
+  build_dir: "Flashlight-VNC"
+  artifacts:
+    - "bin/Flashlight.swf"
+
+machine:
+  environment:
+    FLEX_BASE: $HOME/flex
+    PLAYERGLOBAL_HOME: $HOME/flex/player
+  pre:
+    - sudo apt-get update; sudo apt-get install -y jq
+
+dependencies:
+  pre:
+    - ../dependencies.sh
+  cache_directories:
+    - "~/flex"
+
+deployment:
+  test:
+    branch: [develop, master]
+    commands:
+      - aws --region eu-central-1 s3 cp bin/Flashlight.swf s3://${S3_BUCKET}/Flashlight-$CIRCLE_SHA1.swf --acl=public-read
