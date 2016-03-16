@@ -133,6 +133,15 @@ package com.flashlight.vnc
 			ChangeWatcher.watch(this,"viewOnly",onViewOnlyChange);
 		}
 		
+		private static function socketEvent(evt:Event):void {
+			if (ExternalInterface.available) {
+				try {
+					ExternalInterface.call("FlashlightVncSocketEvent", evt.type);
+				} catch (e:Error) {
+				}
+			}
+		}
+
 		public function connect():void {
 			if (status !== VNCConst.STATUS_NOT_CONNECTED) disconnect();
 			
@@ -140,6 +149,10 @@ package com.flashlight.vnc
 			
 			socket = new BetterSocket();
 			
+			socket.addEventListener(Event.CONNECT, socketEvent, false, 0, true);
+			socket.addEventListener(Event.CLOSE, socketEvent, false, 0, true);
+			socket.addEventListener(IOErrorEvent.IO_ERROR, socketEvent, false, 0, true);
+			socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR, socketEvent, false, 0, true);
 			socket.addEventListener(Event.CONNECT, onSocketConnect,false,0,true);
 			socket.addEventListener(ProgressEvent.SOCKET_DATA, onSocketData,false,0,true);
 			socket.addEventListener(Event.CLOSE, onSocketClose,false,0,true);
