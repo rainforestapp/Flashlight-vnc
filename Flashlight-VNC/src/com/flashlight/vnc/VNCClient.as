@@ -142,6 +142,15 @@ package com.flashlight.vnc
 			}
 		}
 
+		private static function jsLog(message:String):void {
+		  if (ExternalInterface.available) {
+		    try {
+		      ExternalInterface.call("flashLog", message);
+		    } catch (e:Error) {
+		    }
+		  }
+		}
+
 		public function connect():void {
 			if (status !== VNCConst.STATUS_NOT_CONNECTED) disconnect();
 
