@@ -638,7 +638,9 @@ package com.flashlight.vnc
 				}
 
 				var waitTime:int = 0;
-				captureKeyEvents = false;
+				if(input.length > 1) {
+					captureKeyEvents = false;
+				}
 				for (i=0; i<input.length ;i++) {
 					cc=input.charCodeAt(i);
 					rfbWriter.writeKeyEvent(false,0xFFE3,true);
@@ -661,7 +663,9 @@ package com.flashlight.vnc
 					}
 					waitTime += pastePauseDelay;
 				}
-				setTimeout(function() : void {captureKeyEvents = true}, waitTime - pastePauseDelay - 20);
+				if(input.length > 1) {
+					setTimeout(function() : void {captureKeyEvents = true}, waitTime);
+				}
 
 				screen.textInput.text ='';
 
