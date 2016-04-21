@@ -393,30 +393,34 @@ package com.flashlight.vnc
 
 		public function onLocalMouseLeftDown(event:MouseEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
-
-			mouseButtonMask |= VNCConst.MASK_MOUSE_BUTTON_LEFT;
-			rfbWriter.writePointerEvent(mouseButtonMask,new Point(event.localX,event.localY));
+			if (captureKeyEvents) {
+				mouseButtonMask |= VNCConst.MASK_MOUSE_BUTTON_LEFT;
+				rfbWriter.writePointerEvent(mouseButtonMask,new Point(event.localX,event.localY));
+			}
 		}
 
 		public function onLocalMouseLeftUp(event:MouseEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
-
-			mouseButtonMask = mouseButtonMask & (0xFF - VNCConst.MASK_MOUSE_BUTTON_LEFT);
-			rfbWriter.writePointerEvent(mouseButtonMask,new Point(event.localX,event.localY));
+			if (captureKeyEvents) {
+				mouseButtonMask = mouseButtonMask & (0xFF - VNCConst.MASK_MOUSE_BUTTON_LEFT);
+				rfbWriter.writePointerEvent(mouseButtonMask,new Point(event.localX,event.localY));
+			}
 		}
 
 		public function onLocalMouseRightDown(event:RightMouseEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
-
-			mouseButtonMask |= VNCConst.MASK_MOUSE_BUTTON_RIGHT;
-			rfbWriter.writePointerEvent(mouseButtonMask,new Point(event.localX,event.localY));
+			if (captureKeyEvents) {
+				mouseButtonMask |= VNCConst.MASK_MOUSE_BUTTON_RIGHT;
+				rfbWriter.writePointerEvent(mouseButtonMask,new Point(event.localX,event.localY));
+			}
 		}
 
 		public function onLocalMouseRightUp(event:RightMouseEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
-
-			mouseButtonMask = mouseButtonMask & (0xFF - VNCConst.MASK_MOUSE_BUTTON_RIGHT);
-			rfbWriter.writePointerEvent(mouseButtonMask,new Point(event.localX,event.localY));
+			if (captureKeyEvents) {
+				mouseButtonMask = mouseButtonMask & (0xFF - VNCConst.MASK_MOUSE_BUTTON_RIGHT);
+				rfbWriter.writePointerEvent(mouseButtonMask,new Point(event.localX,event.localY));
+			}
 		}
 
 		public function onLocalMouseWheel(event:MouseEvent):void {
