@@ -641,12 +641,15 @@ package com.flashlight.vnc
 				for (i=0; i<input.length ;i++) {
 					cc=input.charCodeAt(i);
 					rfbWriter.writeKeyEvent(false,0xFFE3,true);
-					useShift = !shiftKeyDown && needsShift.indexOf(cc) >= 0;
+					useShift = needsShift.indexOf(cc) >= 0;
 					if(useShift){
 						 logger.info("Using shift for char " + cc);
 						 setTimeout(rfbWriter.writeKeyEvent, waitTime += 45, false, 0xFFE3, true);
 						 setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, true, 0xFFE1, true);
-					}
+					} else {
+		        setTimeout(rfbWriter.writeKeyEvent, waitTime += 15, false, 0xFFE3, true);
+		        setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, false, 0xFFE1, true);
+		      }
 					setTimeout(rfbWriter.writeKeyEvent, waitTime += 15, false, 0xFFE3, true);
 					setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, true, cc, true);
 					setTimeout(rfbWriter.writeKeyEvent, waitTime += 15, false, 0xFFE3, true);
