@@ -103,7 +103,7 @@ package com.flashlight.vnc
 		[Bindable] public var securityPort:int = 0;
 		[Bindable] public var shareConnection:Boolean = true;
 		[Bindable] public var password:String;
-		[Bindable] public var pastePauseDelay:int = 50;
+		[Bindable] public var pastePauseDelay:int = 25;
 
 		[Bindable] public var serverName:String;
 		[Bindable] public var screen:VNCScreen;
