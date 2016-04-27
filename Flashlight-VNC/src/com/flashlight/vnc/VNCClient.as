@@ -523,10 +523,6 @@ package com.flashlight.vnc
 			screen.resize(width,height);
 		}
 
-		private var captureKeyEvents:Boolean = false;
-		private var shiftKeyDown:Boolean = false;
-		private var crtKeyDown:Boolean = false;
-
 		private function onFocusLost(event:FocusEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 
@@ -547,14 +543,16 @@ package com.flashlight.vnc
 			rfbWriter.writeKeyEvent(false,65535,true); //DEL
 		}
 
-		private var expectKeyInput:Boolean = false;
+		private var captureKeyEvents:Boolean = false;
+		private var shiftedChars:String = ":?<>|\"{}+_)(*&^%$#@!~ABCDEFGHIJKLMNOPQRSTUVWYXZ";
+		private var charsToSend:Array = [];
 
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
 
 			if (captureKeyEvents) {
 
-				var keysym:uint;
+				var keysym:uint = 0;
 				logger.info(">> onLocalKeyboardEvent()");
 
 				logger.info("event.type "+event.type);
@@ -564,10 +562,22 @@ package com.flashlight.vnc
 				logger.info("event.ctrlKey "+event.ctrlKey);
 				logger.info("event.keyLocation "+event.keyLocation);
 				logger.info("event.shiftKey "+event.shiftKey);
-				logger.info("expectKeyInput "+expectKeyInput);
 
 				// Ignore Ctrl-v, onTextInput() handles this
 				if (event.ctrlKey && event.keyCode == Keyboard.V) {
+					return;
+				}
+
+				// Send other ctrl commands
+				if(event.ctrlKey && event.type == flash.events.KeyboardEvent.KEY_DOWN && event.keyCode != 17 && event.keyCode != 16) {
+					var charCode:Number = event.keyCode;
+					if (charCode >= 65 && charCode <= 90 && event.shiftKey != true) {
+						//If it's not shifted we need to unshift the keyCode otherwise VNC server will go insane
+						charCode = charCode + 32;
+					}
+					charsToSend.push({code: charCode, shifted: event.shiftKey, controled: true});
+					setTimeout(sendCharsFromQueue, pastePauseDelay);
+					event.stopPropagation();
 					return;
 				}
 
@@ -599,78 +609,64 @@ package com.flashlight.vnc
 					case Keyboard.F11  		: keysym = 0xFFC8; break;
 					case Keyboard.F12  		: keysym = 0xFFC9; break;
 					case 91               : keysym = 0xFFEB; break; // Windows key
-					case Keyboard.SHIFT 	:
-						keysym = 0xFFE1;
-						shiftKeyDown = event.type == flash.events.KeyboardEvent.KEY_DOWN;
-						break;
-					case Keyboard.CONTROL	: keysym = 0xFFE3; break;
 				}
+				if (keysym != 0) {
+					rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
+				}
+				logger.info("<< onLocalKeyboardEvent()");
+			}
+		}
 
-				//logger.info("keysym "+keysym);
+		private function sendChar(charToSend:Object):void {
+			if (charToSend.shifted == true) {
+				rfbWriter.writeKeyEvent(true, 0xFFE1, false);
+			}
+			if (charToSend.controled == true) {
+				rfbWriter.writeKeyEvent(true, 0xFFE3, false);
+			}
+			rfbWriter.writeKeyEvent(true, charToSend.code, true);
+			if (charToSend.shifted == true) {
+				rfbWriter.writeKeyEvent(false, 0xFFE1, false);
+			}
+			if (charToSend.controled == true) {
+				rfbWriter.writeKeyEvent(false, 0xFFE3, false);
+			}
+			rfbWriter.writeKeyEvent(false, charToSend.code, true);
+		}
 
-				rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
-
-				// prevent onTextInput() from firing
-				//event.stopImmediatePropagation();
-
-				//logger.info("<< onLocalKeyboardEvent()");
+		private function sendCharsFromQueue():void {
+			if (charsToSend.length > 0) {
+				var nextChar:Object = charsToSend[0];
+				sendChar(nextChar);
+				charsToSend.splice(0, 1);
+				setTimeout(sendCharsFromQueue, pastePauseDelay);
+			} else {
+				captureKeyEvents = true;
 			}
 		}
 
 		private function onTextInput(event:TextEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
-
 			if (captureKeyEvents) {
 				logger.info(">> onTextInput()");
-				logger.info("Shift Key Down? " + shiftKeyDown);
-
-				expectKeyInput = false;
 
 				var input:String = event.text;
 
-				logger.info("event.text " + input);
-
-				var useShift:Boolean;
-				var cc:uint;
-                // :?<>"{}+_)(*&^%$#@!~
-                var needsShift:Array = [];
-				var chars:String = ":?<>|\"{}+_)(*&^%$#@!~ABCDEFGHIJKLMNOPQRSTUVWYXZ";
-				var i:int = 0;
-
-				for (i = 0; i < chars.length; i++) {
-					needsShift.push(chars.charCodeAt(i));
-				}
-
-				var waitTime:int = 0;
 				if(input.length > 1) {
+					//We are pasting some text now
 					captureKeyEvents = false;
 				}
-				for (i=0; i<input.length ;i++) {
-					cc=input.charCodeAt(i);
-					rfbWriter.writeKeyEvent(false,0xFFE3,true);
-					useShift = needsShift.indexOf(cc) >= 0;
-					if(useShift){
-						 logger.info("Using shift for char " + cc);
-						 setTimeout(rfbWriter.writeKeyEvent, waitTime += 45, false, 0xFFE3, true);
-						 setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, true, 0xFFE1, true);
-					} else {
-		        setTimeout(rfbWriter.writeKeyEvent, waitTime += 15, false, 0xFFE3, true);
-		        setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, false, 0xFFE1, true);
-		      }
-					setTimeout(rfbWriter.writeKeyEvent, waitTime += 15, false, 0xFFE3, true);
-					setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, true, cc, true);
-					setTimeout(rfbWriter.writeKeyEvent, waitTime += 15, false, 0xFFE3, true);
-					setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, false, cc, true);
-					if(useShift){
-						setTimeout(rfbWriter.writeKeyEvent, waitTime += 45, false, 0xFFE3, true);
-						setTimeout(rfbWriter.writeKeyEvent, waitTime += 5, false, 0xFFE1, true);
-					}
-					waitTime += pastePauseDelay;
-				}
-				if(input.length > 1) {
-					setTimeout(function() : void {captureKeyEvents = true}, waitTime);
+
+				var i:Number = 0;
+				for (i = 0; i<input.length ;i++) {
+					var char:String = input.charAt(i)
+					var charCode:Number = input.charCodeAt(i);
+					var useShift:Boolean = shiftedChars.indexOf(char) >= 0;
+					var useControl:Boolean = false;
+					charsToSend.push({code: charCode, shifted: useShift, controled: useControl});
 				}
 
+				setTimeout(sendCharsFromQueue, 0);
 				screen.textInput.text ='';
 
 				logger.info("<< onTextInput()");
