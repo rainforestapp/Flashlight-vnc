@@ -103,7 +103,7 @@ package com.flashlight.vnc
 		[Bindable] public var securityPort:int = 0;
 		[Bindable] public var shareConnection:Boolean = true;
 		[Bindable] public var password:String;
-		[Bindable] public var pastePauseDelay:int = 25;
+		[Bindable] public var pastePauseDelay:int = 10;
 
 		[Bindable] public var serverName:String;
 		[Bindable] public var screen:VNCScreen;
@@ -564,20 +564,8 @@ package com.flashlight.vnc
 				logger.info("event.shiftKey "+event.shiftKey);
 
 				// Ignore Ctrl-v, onTextInput() handles this
-				if (event.ctrlKey && event.keyCode == Keyboard.V) {
-					return;
-				}
-
-				// Send other ctrl commands
-				if(event.ctrlKey && event.type == flash.events.KeyboardEvent.KEY_DOWN && event.keyCode != 17 && event.keyCode != 16) {
-					var charCode:Number = event.keyCode;
-					if (charCode >= 65 && charCode <= 90 && event.shiftKey != true) {
-						//If it's not shifted we need to unshift the keyCode otherwise VNC server will go insane
-						charCode = charCode + 32;
-					}
-					charsToSend.push({code: charCode, shifted: event.shiftKey, controled: true});
-					setTimeout(sendCharsFromQueue, pastePauseDelay);
-					event.stopPropagation();
+				if (event.ctrlKey && !event.shiftKey && event.keyCode == Keyboard.V) {
+					rfbWriter.writeKeyEvent(false, 0xFFE3); //Send CTRL UP
 					return;
 				}
 
@@ -609,7 +597,23 @@ package com.flashlight.vnc
 					case Keyboard.F11  		: keysym = 0xFFC8; break;
 					case Keyboard.F12  		: keysym = 0xFFC9; break;
 					case 91               : keysym = 0xFFEB; break; // Windows key
+					case Keyboard.CONTROL	: keysym = 0xFFE3; break;
 				}
+
+				// Send other ctrl commands
+				if(event.ctrlKey && event.type == flash.events.KeyboardEvent.KEY_DOWN &&
+					 keysym == 0) {
+					var charCode:Number = event.keyCode;
+					if (charCode >= 65 && charCode <= 90 && event.shiftKey != true) {
+						//If it's not shifted we need to unshift the keyCode otherwise VNC server will go insane
+						charCode = charCode + 32;
+					}
+					charsToSend.push({code: charCode, shifted: event.shiftKey, controled: true});
+					setTimeout(sendCharsFromQueue, 0);
+					event.stopPropagation();
+					return;
+				}
+
 				if (keysym != 0) {
 					rfbWriter.writeKeyEvent(event.type == flash.events.KeyboardEvent.KEY_DOWN,keysym);
 				}
