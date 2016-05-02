@@ -546,6 +546,7 @@ package com.flashlight.vnc
 		private var captureKeyEvents:Boolean = false;
 		private var shiftedChars:String = ":?<>|\"{}+_)(*&^%$#@!~ABCDEFGHIJKLMNOPQRSTUVWYXZ";
 		private var charsToSend:Array = [];
+		private var hasShiftBeenTouched:Boolean = false;
 
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
 			if (status != VNCConst.STATUS_CONNECTED) return;
@@ -567,6 +568,11 @@ package com.flashlight.vnc
 				if (event.ctrlKey && !event.shiftKey && event.keyCode == Keyboard.V) {
 					rfbWriter.writeKeyEvent(false, 0xFFE3); //Send CTRL UP
 					return;
+				}
+
+				// Flag the shift as it's source of all evil
+				if (event.shiftKey) {
+					hasShiftBeenTouched = true;
 				}
 
 				switch ( event.keyCode ) {
@@ -598,6 +604,7 @@ package com.flashlight.vnc
 					case Keyboard.F12  		: keysym = 0xFFC9; break;
 					case 91               : keysym = 0xFFEB; break; // Windows key
 					case Keyboard.CONTROL	: keysym = 0xFFE3; break;
+					case Keyboard.SHIFT	: keysym = 0xFFE1; break;
 				}
 
 				// Send other ctrl commands
@@ -622,6 +629,14 @@ package com.flashlight.vnc
 		}
 
 		private function sendChar(charToSend:Object):void {
+			if (hasShiftBeenTouched == true) {
+				// Force shift keyup before sending any other chars if it was pressed
+				// at any time before sending this char
+				rfbWriter.writeKeyEvent(false, 0xFFE1, true);
+				hasShiftBeenTouched = false;
+			}
+
+			//Send KeyDown
 			if (charToSend.shifted == true) {
 				rfbWriter.writeKeyEvent(true, 0xFFE1, false);
 			}
@@ -629,6 +644,8 @@ package com.flashlight.vnc
 				rfbWriter.writeKeyEvent(true, 0xFFE3, false);
 			}
 			rfbWriter.writeKeyEvent(true, charToSend.code, true);
+
+			//Send KeyUp
 			if (charToSend.shifted == true) {
 				rfbWriter.writeKeyEvent(false, 0xFFE1, false);
 			}
