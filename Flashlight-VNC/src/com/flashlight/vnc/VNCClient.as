@@ -832,8 +832,8 @@ package com.flashlight.vnc
 		}
 
 		private function onSocketSecurityError(event:SecurityErrorEvent):void {
-			onError("An security error occured ("+event.text+").\n" +
-				"Check your policy-policy server configuration or disable security for this domain.",null);
+			var u:String = "http://" + host + ":" + securityPort
+			onError("A security error occurred ("+event.text+").\nPlease check you can connect to " + u + "\n", null);
 			if(reConnect)				testConnection();
 		}
 
