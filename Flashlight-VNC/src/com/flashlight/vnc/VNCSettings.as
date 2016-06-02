@@ -28,7 +28,7 @@ package com.flashlight.vnc
 		[Bindable] public var host:String = "localhost";
 		[Bindable] public var port:int = 5900;
 		[Bindable] public var useSecurity:Boolean = true;
-		[Bindable] public var securityPort:int = 1234;
+		[Bindable] public var securityPort:int = 843;
 		[Bindable] public var encoding:int = VNCConst.ENCODING_TIGHT;
 		[Bindable] public var colorDepth:int = 24;
 		[Bindable] public var jpegCompression:int = 6;
