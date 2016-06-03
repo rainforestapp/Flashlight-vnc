@@ -154,7 +154,7 @@ package com.flashlight.vnc
 		public function connect():void {
 			if (status !== VNCConst.STATUS_NOT_CONNECTED) disconnect();
 
-			if (securityPort) Security.loadPolicyFile("xmlsocket://"+host+":"+securityPort);
+			if (securityPort) Security.loadPolicyFile("http://"+host+":"+securityPort);
 
 			socket = new BetterSocket();
 
@@ -783,7 +783,7 @@ package com.flashlight.vnc
 		private function testVNCConnection():void {
 			testingStatus = VNCConst.TEST_CONNECTION_CHECKING;
 
-			Security.loadPolicyFile("xmlsocket://"+host+":"+port);
+			if (securityPort) Security.loadPolicyFile("http://"+host+":"+securityPort);
 			var s:Socket = new Socket();
 			s.addEventListener(IOErrorEvent.IO_ERROR, onVNCIOError);
 			s.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onSecurityPortKo);
@@ -832,8 +832,8 @@ package com.flashlight.vnc
 		}
 
 		private function onSocketSecurityError(event:SecurityErrorEvent):void {
-			onError("An security error occured ("+event.text+").\n" +
-				"Check your policy-policy server configuration or disable security for this domain.",null);
+			var u:String = "http://" + host + ":" + securityPort
+			onError("A security error occurred ("+event.text+").\nPlease check you can connect to " + u + "\n", null);
 			if(reConnect)				testConnection();
 		}
 
