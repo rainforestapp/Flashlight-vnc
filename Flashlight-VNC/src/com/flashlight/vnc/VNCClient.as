@@ -629,6 +629,10 @@ package com.flashlight.vnc
 		}
 
 		private function sendChar(charToSend:Object):void {
+			if (charToSend.code > 126) {
+				sendUnicodeChar(charToSend.code);
+				return;
+			}
 			if (hasShiftBeenTouched == true) {
 				// Force shift keyup before sending any other chars if it was pressed
 				// at any time before sending this char
@@ -664,6 +668,24 @@ package com.flashlight.vnc
 			} else {
 				captureKeyEvents = true;
 			}
+		}
+
+
+		private function sendUnicodeChar(codePoint:Number):void {
+			var asHex:String = codePoint.toString(16);
+			// Send left alt down and hold while punching in magic number
+			rfbWriter.writeKeyEvent(true, 0xFFE9);
+			// Begin with numpad +
+			rfbWriter.writeKeyEvent(true,	0xFFAB);
+			rfbWriter.writeKeyEvent(false, 0xFFAB);
+			// Then send hex code for the unicode char
+			for (var i:Number = 0; i < asHex.length; i++) {
+					var charCode:Number = asHex.charCodeAt(i);
+					sendChar({code: charCode, shifted: false, controled: false});
+			}
+
+			// Release alt to make magic happen
+			rfbWriter.writeKeyEvent(false, 0xFFE9);
 		}
 
 		private function onTextInput(event:TextEvent):void {
