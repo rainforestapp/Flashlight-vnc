@@ -58,6 +58,7 @@ package com.flashlight.vnc
 	import flash.utils.Timer;
 	import flash.utils.getTimer;
 	import flash.utils.setTimeout;
+	import flash.desktop.Clipboard;
 
 	import mx.binding.utils.ChangeWatcher;
 	import mx.controls.Alert;
@@ -549,6 +550,8 @@ package com.flashlight.vnc
 		private var hasShiftBeenTouched:Boolean = false;
 
 		private function onLocalKeyboardEvent(event:KeyboardEvent):void {
+			var charCode:Number;
+
 			if (status != VNCConst.STATUS_CONNECTED) return;
 
 			if (captureKeyEvents) {
@@ -567,6 +570,27 @@ package com.flashlight.vnc
 				// Ignore Ctrl-v, onTextInput() handles this
 				if (event.ctrlKey && !event.shiftKey && event.keyCode == Keyboard.V) {
 					rfbWriter.writeKeyEvent(false, 0xFFE3); //Send CTRL UP
+					return;
+				}
+
+				// Send ctrl-c and ctrl-v to host when client sees shifted counterparts
+				if (event.ctrlKey && event.shiftKey && event.type == flash.events.KeyboardEvent.KEY_DOWN &&
+					(event.keyCode == Keyboard.V || event.keyCode == Keyboard.C)) {
+
+					charCode = event.keyCode;
+					if (charCode >= 65 && charCode <= 90) {
+						charCode = charCode + 32;
+					}
+
+					// Because we can't prevent browser from pasting text on ctrl+shift+c let's give it nothing to paste
+					if(event.keyCode == Keyboard.C) {
+						Clipboard.generalClipboard.clear();
+					}
+
+					charsToSend.push({code: charCode, shifted: false, controled: true});
+					setTimeout(sendCharsFromQueue, 0);
+					event.stopPropagation();
+					event.preventDefault();
 					return;
 				}
 
@@ -610,7 +634,7 @@ package com.flashlight.vnc
 				// Send other ctrl commands
 				if(event.ctrlKey && event.type == flash.events.KeyboardEvent.KEY_DOWN &&
 					 keysym == 0) {
-					var charCode:Number = event.keyCode;
+					charCode = event.keyCode;
 					if (charCode >= 65 && charCode <= 90 && event.shiftKey != true) {
 						//If it's not shifted we need to unshift the keyCode otherwise VNC server will go insane
 						charCode = charCode + 32;
